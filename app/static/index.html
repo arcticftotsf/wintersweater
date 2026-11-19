@@ -26,7 +26,17 @@
         </aside>
 
         <section class="editor-area">
-            <div class="page-info">A4 縦書き</div>
+            <div class="search-panel">
+                <input id="search-input" type="text" placeholder="検索する文字列">
+                <input id="replace-input" type="text" placeholder="置換後の文字列">
+
+                <button id="find-prev">前へ</button>
+                <button id="find-next">次へ</button>
+                <button id="replace-one">置換</button>
+                <button id="replace-all">すべて置換</button>
+
+                <span id="search-status"></span>
+            </div>
 
             <div class="page">
                 <textarea

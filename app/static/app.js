@@ -123,3 +123,136 @@ async function initialize() {
 }
 
 initialize().catch(console.error);
+
+const searchInput = document.getElementById("search-input");
+const replaceInput = document.getElementById("replace-input");
+const searchStatus = document.getElementById("search-status");
+
+function findNext(reverse = false) {
+    const keyword = searchInput.value;
+
+    if (!keyword) {
+        searchStatus.textContent = "検索文字列を入力してください";
+        return false;
+    }
+
+    const content = editor.value;
+    const start = reverse
+        ? editor.selectionStart - 1
+        : editor.selectionEnd;
+
+    let index;
+
+    if (reverse) {
+        index = content.lastIndexOf(keyword, start);
+        if (index === -1) {
+            index = content.lastIndexOf(keyword);
+        }
+    } else {
+        index = content.indexOf(keyword, start);
+        if (index === -1) {
+            index = content.indexOf(keyword);
+        }
+    }
+
+    if (index === -1) {
+        searchStatus.textContent = "見つかりません";
+        return false;
+    }
+
+    editor.focus();
+    editor.setSelectionRange(index, index + keyword.length);
+
+    searchStatus.textContent = "見つかりました";
+    return true;
+}
+
+document.getElementById("find-next")
+    .addEventListener("click", () => findNext());
+
+document.getElementById("find-prev")
+    .addEventListener("click", () => findNext(true));
+
+document.getElementById("replace-one")
+    .addEventListener("click", () => {
+        const keyword = searchInput.value;
+
+        if (!keyword) return;
+
+        const selected = editor.value.slice(
+            editor.selectionStart,
+            editor.selectionEnd
+        );
+
+        if (selected !== keyword) {
+            if (!findNext()) return;
+        }
+
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+
+        editor.setRangeText(
+            replaceInput.value,
+            start,
+            end,
+            "end"
+        );
+
+        updateCharacterCount();
+        scheduleSave();
+        findNext();
+    });
+
+document.getElementById("replace-all")
+    .addEventListener("click", () => {
+        const keyword = searchInput.value;
+
+        if (!keyword) return;
+
+        const matches = editor.value.split(keyword).length - 1;
+
+        if (matches === 0) {
+            searchStatus.textContent = "見つかりません";
+            return;
+        }
+
+        editor.value = editor.value.split(keyword)
+            .join(replaceInput.value);
+
+        updateCharacterCount();
+        scheduleSave();
+
+        searchStatus.textContent = `${matches}件置換しました`;
+    });
+
+searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        findNext(event.shiftKey);
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+
+    if ((event.ctrlKey || event.metaKey) && key === "s") {
+        event.preventDefault();
+        saveDocument();
+    }
+
+    if ((event.ctrlKey || event.metaKey) && key === "f") {
+        event.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+    }
+
+    if (event.key === "Escape") {
+        if (document.activeElement === searchInput ||
+            document.activeElement === replaceInput) {
+            searchInput.value = "";
+            replaceInput.value = "";
+            searchStatus.textContent = "";
+            editor.focus();
+        }
+    }
+});
