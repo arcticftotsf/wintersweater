@@ -2,46 +2,32 @@
     box-sizing: border-box;
 }
 
+:root {
+    --toolbar-height: 58px;
+    --sidebar-width: 230px;
+    --background: #e9e8e5;
+    --panel-background: #fff;
+    --border: #ddd;
+    --text: #333;
+    --muted: #888;
+}
+
 body {
     margin: 0;
-    background: #e9e8e5;
-    color: #333;
+    color: var(--text);
+    background: var(--background);
     font-family: "Yu Mincho", "游明朝", "Noto Serif JP",
                  "Hiragino Mincho ProN", serif;
 }
 
-.toolbar {
-    height: 58px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding: 0 24px;
-    background: #fff;
-    border-bottom: 1px solid #ddd;
-    font-family: sans-serif;
-}
-
-.brand {
-    font-weight: bold;
-    letter-spacing: 1px;
-}
-
-#document-title {
-    width: 220px;
-    padding: 7px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.toolbar-actions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+button,
+input,
+select {
+    font: inherit;
 }
 
 button {
-    padding: 7px 14px;
+    padding: 7px 13px;
     border: 1px solid #ccc;
     border-radius: 4px;
     background: white;
@@ -52,23 +38,67 @@ button:hover {
     background: #f1f1f1;
 }
 
+.toolbar {
+    height: var(--toolbar-height);
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 22px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    font-family: sans-serif;
+}
+
+.brand {
+    font-weight: bold;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+#document-title {
+    width: 240px;
+    max-width: 35vw;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.toolbar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 #save-status {
+    color: var(--muted);
     font-size: 12px;
-    color: #777;
+}
+
+.menu-button {
+    font-size: 20px;
+    padding: 4px 10px;
 }
 
 .workspace {
     display: flex;
-    height: calc(100vh - 58px);
+    height: calc(100vh - var(--toolbar-height));
 }
 
 .sidebar {
-    width: 230px;
+    width: var(--sidebar-width);
     flex-shrink: 0;
-    padding: 20px;
+    padding: 18px;
     background: #f8f8f7;
-    border-right: 1px solid #ddd;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
     font-family: sans-serif;
+}
+
+.sidebar-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .sidebar h2 {
@@ -88,6 +118,7 @@ button:hover {
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
+    overflow-wrap: anywhere;
 }
 
 #document-list li:hover,
@@ -99,30 +130,42 @@ button:hover {
     flex: 1;
     min-width: 0;
     overflow: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 30px;
+    padding: 24px 30px 60px;
 }
 
-.page-info {
-    width: 210mm;
+.editor-toolbar {
     max-width: 100%;
-    margin-bottom: 12px;
+    margin: 0 auto 14px;
+    display: flex;
+    justify-content: space-between;
     color: #777;
     font: 12px sans-serif;
 }
 
-.page {
-    width: 210mm;
-    height: 297mm;
-    flex-shrink: 0;
-    padding: 20mm;
-    background: #fff;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+.pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
 }
 
-#editor {
+.page {
+    position: relative;
+    flex-shrink: 0;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.page-content {
+    position: absolute;
+    top: var(--margin-top);
+    right: var(--margin-right);
+    bottom: var(--margin-bottom);
+    left: var(--margin-left);
+}
+
+.page-editor {
     display: block;
     width: 100%;
     height: 100%;
@@ -130,56 +173,234 @@ button:hover {
     border: none;
     outline: none;
     resize: none;
+    overflow: hidden;
     background: transparent;
     color: #222;
     font-family: "Yu Mincho", "游明朝", "Noto Serif JP",
                  "Hiragino Mincho ProN", serif;
-    font-size: 16px;
+    font-size: var(--font-size);
     line-height: 1.8;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
     writing-mode: vertical-rl;
     text-orientation: mixed;
     white-space: pre-wrap;
-    overflow: auto;
+    overflow-wrap: anywhere;
 }
 
-#editor::placeholder {
-    color: #bbb;
-}
-
-.editor-footer {
-    width: 210mm;
-    max-width: 100%;
-    padding: 12px 0;
+.page-number {
+    position: absolute;
+    bottom: 7mm;
+    left: 0;
+    right: 0;
+    text-align: center;
     color: #777;
-    font: 12px sans-serif;
+    font: 10px sans-serif;
 }
 
+.menu-overlay,
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.menu-overlay.open,
+.dialog-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.menu-panel,
+.settings-panel,
 .search-panel {
-    width: 210mm;
-    max-width: 100%;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
+    position: fixed;
+    z-index: 21;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 340px;
+    max-width: 90vw;
+    padding: 22px;
+    background: white;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12);
+    transform: translateX(105%);
+    transition: transform 0.2s;
+    overflow-y: auto;
     font-family: sans-serif;
 }
 
-.search-panel input {
-    width: 150px;
-    min-width: 0;
-    padding: 7px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+.menu-panel.open,
+.settings-panel.open,
+.search-panel.open {
+    transform: translateX(0);
 }
 
-.search-panel button {
-    padding: 7px 10px;
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.panel-header button {
+    font-size: 22px;
+    border: none;
+}
+
+.menu-section {
+    margin-bottom: 28px;
+}
+
+.menu-section h3,
+.settings-content h3 {
+    margin: 0 0 10px;
+    color: #888;
     font-size: 12px;
+    font-weight: normal;
+}
+
+.menu-item {
+    display: block;
+    width: 100%;
+    padding: 13px 10px;
+    border: none;
+    border-bottom: 1px solid #eee;
+    border-radius: 0;
+    text-align: left;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.menu-item:hover {
+    background: #f5f5f3;
+}
+
+.file-label {
+    cursor: pointer;
+}
+
+.settings-content label,
+.search-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.settings-content input,
+.settings-content select,
+.search-panel input {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+}
+
+.checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+}
+
+.checkbox-label input {
+    width: auto;
+}
+
+.settings-note {
+    color: #888;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.primary-button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px;
+    border: none;
+    color: white;
+    background: #444;
+}
+
+.primary-button:hover {
+    background: #222;
+}
+
+.search-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
 #search-status {
+    min-height: 20px;
     color: #777;
     font-size: 12px;
+}
+
+@media print {
+    @page {
+        margin: 0;
+    }
+
+    body {
+        background: white;
+    }
+
+    .toolbar,
+    .sidebar,
+    .editor-toolbar,
+    .menu-panel,
+    .menu-overlay,
+    .dialog-overlay,
+    .settings-panel,
+    .search-panel {
+        display: none !important;
+    }
+
+    .workspace,
+    .editor-area,
+    .pages {
+        display: block;
+        height: auto;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .pages {
+        display: block;
+    }
+
+    .page {
+        margin: 0;
+        box-shadow: none;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .page-editor {
+        overflow: hidden;
+    }
 }

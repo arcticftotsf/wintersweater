@@ -10,47 +10,189 @@
     <header class="toolbar">
         <div class="brand">Wintersweater</div>
 
-        <input id="document-title" type="text" value="新しい原稿">
+        <input
+            id="document-title"
+            type="text"
+            value="新しい原稿"
+            aria-label="原稿タイトル"
+        >
 
         <div class="toolbar-actions">
             <span id="save-status">未保存</span>
             <button id="save-button">保存</button>
-            <button id="new-button">新規作成</button>
+            <button id="menu-button" class="menu-button"
+                    aria-label="メニューを開く">☰</button>
         </div>
     </header>
 
     <main class="workspace">
         <aside class="sidebar">
-            <h2>原稿一覧</h2>
+            <div class="sidebar-heading">
+                <h2>原稿一覧</h2>
+                <button id="new-button" title="新しい原稿">＋</button>
+            </div>
             <ul id="document-list"></ul>
         </aside>
 
         <section class="editor-area">
-            <div class="search-panel">
-                <input id="search-input" type="text" placeholder="検索する文字列">
-                <input id="replace-input" type="text" placeholder="置換後の文字列">
-
-                <button id="find-prev">前へ</button>
-                <button id="find-next">次へ</button>
-                <button id="replace-one">置換</button>
-                <button id="replace-all">すべて置換</button>
-
-                <span id="search-status"></span>
-            </div>
-
-            <div class="page">
-                <textarea
-                    id="editor"
-                    placeholder="ここから小説を書き始める..."
-                    spellcheck="false"
-                ></textarea>
-            </div>
-
-            <div class="editor-footer">
+            <div class="editor-toolbar">
+                <span id="page-info">1 / 1 ページ</span>
                 <span id="character-count">0文字</span>
             </div>
+
+            <div id="pages" class="pages"></div>
         </section>
     </main>
+
+    <div id="menu-overlay" class="menu-overlay"></div>
+
+    <aside id="menu-panel" class="menu-panel">
+        <div class="panel-header">
+            <h2>メニュー</h2>
+            <button id="close-menu-button" aria-label="閉じる">×</button>
+        </div>
+
+        <section class="menu-section">
+            <h3>編集</h3>
+            <button id="open-search-button" class="menu-item">
+                検索・置換
+            </button>
+            <button id="open-settings-button" class="menu-item">
+                原稿設定
+            </button>
+        </section>
+
+        <section class="menu-section">
+            <h3>ファイル</h3>
+            <button id="export-settings-button" class="menu-item">
+                設定をエクスポート
+            </button>
+            <label class="menu-item file-label" for="import-settings-file">
+                設定をインポート
+            </label>
+            <input
+                id="import-settings-file"
+                type="file"
+                accept=".json,application/json"
+                hidden
+            >
+            <button id="print-button" class="menu-item">
+                印刷・PDF出力
+            </button>
+        </section>
+    </aside>
+
+    <div id="settings-overlay" class="dialog-overlay"></div>
+
+    <section id="settings-panel" class="settings-panel">
+        <div class="panel-header">
+            <h2>原稿設定</h2>
+            <button id="close-settings-button" aria-label="閉じる">×</button>
+        </div>
+
+        <div class="settings-content">
+            <label>
+                用紙サイズ
+                <select id="setting-paper">
+                    <option value="A4">A4</option>
+                    <option value="B5">B5</option>
+                    <option value="A5">A5</option>
+                </select>
+            </label>
+
+            <div class="settings-grid">
+                <label>
+                    1行の文字数
+                    <input id="setting-chars" type="number"
+                           min="1" max="200">
+                </label>
+
+                <label>
+                    1ページの行数
+                    <input id="setting-lines" type="number"
+                           min="1" max="100">
+                </label>
+
+                <label>
+                    文字サイズ（pt）
+                    <input id="setting-font-size" type="number"
+                           min="6" max="40" step="0.5">
+                </label>
+
+                <label>
+                    ページ番号の開始
+                    <input id="setting-page-start" type="number"
+                           min="1" max="9999">
+                </label>
+            </div>
+
+            <h3>余白（mm）</h3>
+
+            <div class="settings-grid">
+                <label>
+                    上
+                    <input id="setting-margin-top" type="number"
+                           min="0" max="100">
+                </label>
+                <label>
+                    下
+                    <input id="setting-margin-bottom" type="number"
+                           min="0" max="100">
+                </label>
+                <label>
+                    左
+                    <input id="setting-margin-left" type="number"
+                           min="0" max="100">
+                </label>
+                <label>
+                    右
+                    <input id="setting-margin-right" type="number"
+                           min="0" max="100">
+                </label>
+            </div>
+
+            <label class="checkbox-label">
+                <input id="setting-show-page-number" type="checkbox">
+                ページ番号を表示する
+            </label>
+
+            <p class="settings-note">
+                設定は原稿ごとに保存されます。変更するとページ表示に反映されます。
+            </p>
+
+            <button id="apply-settings-button" class="primary-button">
+                設定を適用
+            </button>
+        </div>
+    </section>
+
+    <div id="search-overlay" class="dialog-overlay"></div>
+
+    <section id="search-panel" class="search-panel">
+        <div class="panel-header">
+            <h2>検索・置換</h2>
+            <button id="close-search-button" aria-label="閉じる">×</button>
+        </div>
+
+        <label>
+            検索する文字列
+            <input id="search-input" type="text">
+        </label>
+
+        <label>
+            置換後の文字列
+            <input id="replace-input" type="text">
+        </label>
+
+        <div class="search-actions">
+            <button id="find-prev">前へ</button>
+            <button id="find-next">次へ</button>
+            <button id="replace-one">1件置換</button>
+            <button id="replace-all">すべて置換</button>
+        </div>
+
+        <p id="search-status"></p>
+    </section>
 
     <script src="/app.js"></script>
 </body>
