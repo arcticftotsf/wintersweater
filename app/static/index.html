@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wintersweater</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header class="toolbar">
+        <div class="brand">Wintersweater</div>
+
+        <input id="document-title" type="text" value="新しい原稿">
+
+        <div class="toolbar-actions">
+            <span id="save-status">未保存</span>
+            <button id="save-button">保存</button>
+            <button id="new-button">新規作成</button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <aside class="sidebar">
+            <h2>原稿一覧</h2>
+            <ul id="document-list"></ul>
+        </aside>
+
+        <section class="editor-area">
+            <div class="page-info">A4 縦書き</div>
+
+            <div class="page">
+                <textarea
+                    id="editor"
+                    placeholder="ここから小説を書き始める..."
+                    spellcheck="false"
+                ></textarea>
+            </div>
+
+            <div class="editor-footer">
+                <span id="character-count">0文字</span>
+            </div>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
