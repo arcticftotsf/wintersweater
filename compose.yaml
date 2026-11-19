@@ -12,7 +12,7 @@ services:
       DATABASE_PATH: /data/wintersweater.db
       PYTHONDONTWRITEBYTECODE: "1"
     command: >
-      python -m debugpy
+      python -Xfrozen_modules=off -m debugpy
       --listen 0.0.0.0:5678
       --wait-for-client
       -m uvicorn app.main:app
