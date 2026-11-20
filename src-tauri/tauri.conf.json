@@ -19,9 +19,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "externalBin": [
-      "binaries/wintersweater-server"
-    ]
+    "targets": ["nsis"]
   }
 }
