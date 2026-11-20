@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager
 
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -25,6 +26,14 @@ DEFAULT_SETTINGS = {
 }
 
 app = FastAPI(title="Wintersweater")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @contextmanager

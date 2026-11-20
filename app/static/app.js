@@ -5,6 +5,8 @@ const saveStatus = document.getElementById("save-status");
 const characterCount = document.getElementById("character-count");
 const pageInfo = document.getElementById("page-info");
 
+const API_BASE_URL = "http://127.0.0.1:8000";
+
 const DEFAULT_SETTINGS = {
     paper: "A4",
     charsPerLine: 40,
@@ -33,7 +35,7 @@ let saveAgain = false;
 let currentSearchPosition = 0;
 
 async function request(url, options = {}) {
-    const response = await fetch(url, {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
         headers: { "Content-Type": "application/json" },
         ...options,
     });
@@ -368,15 +370,28 @@ async function openDocument(id) {
 }
 
 async function createDocument() {
-    const doc = await request("/api/documents", {
-        method: "POST",
-        body: JSON.stringify({ title: "新しい原稿" }),
-    });
+    try {
+        setSaveStatus("新規原稿を作成中...");
 
-    await openDocument(doc.id);
+        console.log("createDocument: start");
 
-    const firstEditor = editorPages.querySelector(".page-editor");
-    firstEditor?.focus();
+        const doc = await request("/api/documents", {
+            method: "POST",
+            body: JSON.stringify({ title: "新しい原稿" }),
+        });
+
+        console.log("createDocument: API response", doc);
+
+        await openDocument(doc.id);
+
+        const firstEditor = editorPages.querySelector(".page-editor");
+        firstEditor?.focus();
+
+        setSaveStatus("作成完了");
+    } catch (error) {
+        console.error("createDocument failed:", error);
+        setSaveStatus(`作成失敗: ${error.message}`);
+    }
 }
 
 function fillSettingsForm() {
