@@ -340,12 +340,175 @@ async function loadDocuments() {
 
     documents.forEach(doc => {
         const li = document.createElement("li");
-        li.textContent = doc.title;
+        li.className = "document-item";
         li.classList.toggle("active", doc.id === currentDocumentId);
-        li.addEventListener("click", () => openDocument(doc.id));
+
+        // 原稿を開くボタン
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "document-open-button";
+        openButton.textContent = doc.title;
+        openButton.title = doc.title;
+
+        openButton.addEventListener("click", async () => {
+            try {
+                await openDocument(doc.id);
+            } catch (error) {
+                console.error(error);
+                setSaveStatus(`読み込み失敗: ${error.message}`);
+            }
+        });
+
+        // 削除ボタン
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "document-delete-button";
+        deleteButton.textContent = "削除";
+        deleteButton.title = `${doc.title}を削除`;
+
+        deleteButton.addEventListener("click", () => {
+            deleteDocument(doc.id, doc.title);
+        });
+
+        li.append(openButton, deleteButton);
         documentList.appendChild(li);
     });
 }
+
+async function deleteDocument(id, title) {
+    // 保存中の原稿は、保存完了後に削除する
+    if (id === currentDocumentId && isSaving) {
+        setSaveStatus("保存処理中です。完了後に削除してください。");
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `「${title}」を削除しますか？\n\nこの操作は取り消せません。未保存の変更も失われます。`
+    );
+
+    if (!confirmed) return;
+
+    const isCurrentDocument = id === currentDocumentId;
+
+    try {
+        // 現在開いている原稿なら自動保存を停止
+        if (isCurrentDocument) {
+            clearTimeout(saveTimer);
+            saveTimer = null;
+        }
+
+        // APIで削除
+        await request(`/api/documents/${id}`, {
+            method: "DELETE",
+        });
+
+        if (isCurrentDocument) {
+            currentDocumentId = null;
+
+            const documents = await request("/api/documents");
+
+            if (documents.length > 0) {
+                // 別の原稿を開く
+                await openDocument(documents[0].id);
+            } else {
+                // 最後の原稿なら空の編集画面にする
+                clearEditor();
+                await loadDocuments();
+            }
+        } else {
+            await loadDocuments();
+        }
+
+        setSaveStatus("削除しました");
+    } catch (error) {
+        console.error("deleteDocument failed:", error);
+        setSaveStatus(`削除失敗: ${error.message}`);
+    }
+}
+
+function clearEditor() {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+
+    currentDocumentId = null;
+    currentContent = "";
+    currentSettings = { ...DEFAULT_SETTINGS };
+
+    titleInput.value = "";
+
+    renderPages();
+    fillSettingsForm();
+
+    setSaveStatus("原稿がありません");
+}
+
+async function deleteDocument(id, title) {
+    // 保存中の原稿を削除する場合は、保存完了を待つ
+    if (id === currentDocumentId && isSaving) {
+        setSaveStatus("保存処理中です。完了後に削除してください。");
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `「${title}」を削除しますか？\n\n` +
+        "この操作は取り消せません。未保存の変更も失われます。"
+    );
+
+    if (!confirmed) return;
+
+    const isCurrentDocument = id === currentDocumentId;
+
+    try {
+        // 削除対象の自動保存を停止
+        if (isCurrentDocument) {
+            clearTimeout(saveTimer);
+            saveTimer = null;
+        }
+
+        await request(`/api/documents/${id}`, {
+            method: "DELETE",
+        });
+
+        if (isCurrentDocument) {
+            currentDocumentId = null;
+
+            const documents = await request("/api/documents");
+
+            if (documents.length > 0) {
+                // 最新の原稿を開く
+                await openDocument(documents[0].id);
+            } else {
+                // 最後の原稿なら空の編集画面にする
+                clearEditor();
+                await loadDocuments();
+            }
+        } else {
+            await loadDocuments();
+        }
+
+        setSaveStatus("削除しました");
+    } catch (error) {
+        console.error("deleteDocument failed:", error);
+        setSaveStatus(`削除失敗: ${error.message}`);
+    }
+}
+
+function clearEditor() {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+
+    currentDocumentId = null;
+    currentContent = "";
+    currentSettings = { ...DEFAULT_SETTINGS };
+
+    titleInput.value = "";
+
+    renderPages();
+    fillSettingsForm();
+
+    setSaveStatus("原稿がありません");
+}
+
 
 async function openDocument(id) {
     if (id === currentDocumentId) return;
