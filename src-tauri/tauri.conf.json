@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Wintersweater",
+  "version": "0.1.0",
+  "identifier": "com.wintersweater.app",
+  "build": {
+    "frontendDist": "../app/static"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Wintersweater",
+        "width": 1200,
+        "height": 850,
+        "minWidth": 900,
+        "minHeight": 650
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "externalBin": [
+      "binaries/wintersweater-server"
+    ]
+  }
+}
