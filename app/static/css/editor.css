@@ -22,8 +22,6 @@
     padding: 0;
     border: none;
     outline: none;
-    resize: none;
-    overflow: hidden;
     background: transparent;
     color: #222;
     font-family: "Yu Mincho", "游明朝", "Noto Serif JP",
@@ -35,6 +33,8 @@
     text-orientation: mixed;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    overflow: hidden;
+    cursor: text;
 }
 
 .page-number {
