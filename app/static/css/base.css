@@ -1,0 +1,39 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --toolbar-height: 58px;
+    --sidebar-width: 230px;
+    --background: #e9e8e5;
+    --panel-background: #fff;
+    --border: #ddd;
+    --text: #333;
+    --muted: #888;
+}
+
+body {
+    margin: 0;
+    color: var(--text);
+    background: var(--background);
+    font-family: "Yu Mincho", "游明朝", "Noto Serif JP",
+                 "Hiragino Mincho ProN", serif;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    padding: 7px 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #f1f1f1;
+}

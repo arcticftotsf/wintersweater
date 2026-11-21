@@ -1,0 +1,48 @@
+
+.page {
+    position: relative;
+    flex-shrink: 0;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.page-content {
+    position: absolute;
+    top: var(--margin-top);
+    right: var(--margin-right);
+    bottom: var(--margin-bottom);
+    left: var(--margin-left);
+}
+
+.page-editor {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+    background: transparent;
+    color: #222;
+    font-family: "Yu Mincho", "游明朝", "Noto Serif JP",
+                 "Hiragino Mincho ProN", serif;
+    font-size: var(--font-size);
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.page-number {
+    position: absolute;
+    bottom: 7mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #777;
+    font: 10px sans-serif;
+}

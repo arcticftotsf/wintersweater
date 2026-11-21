@@ -1,0 +1,158 @@
+
+.menu-overlay,
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.menu-overlay.open,
+.dialog-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.menu-panel,
+.settings-panel,
+.search-panel {
+    position: fixed;
+    z-index: 21;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 340px;
+    max-width: 90vw;
+    padding: 22px;
+    background: white;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12);
+    transform: translateX(105%);
+    transition: transform 0.2s;
+    overflow-y: auto;
+    font-family: sans-serif;
+}
+
+.menu-panel.open,
+.settings-panel.open,
+.search-panel.open {
+    transform: translateX(0);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.panel-header button {
+    font-size: 22px;
+    border: none;
+}
+
+.menu-section {
+    margin-bottom: 28px;
+}
+
+.menu-section h3,
+.settings-content h3 {
+    margin: 0 0 10px;
+    color: #888;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.menu-item {
+    display: block;
+    width: 100%;
+    padding: 13px 10px;
+    border: none;
+    border-bottom: 1px solid #eee;
+    border-radius: 0;
+    text-align: left;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.menu-item:hover {
+    background: #f5f5f3;
+}
+
+.file-label {
+    cursor: pointer;
+}
+
+.settings-content label,
+.search-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.settings-content input,
+.settings-content select,
+.search-panel input {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+}
+
+.checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+}
+
+.checkbox-label input {
+    width: auto;
+}
+
+.settings-note {
+    color: #888;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.primary-button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px;
+    border: none;
+    color: white;
+    background: #444;
+}
+
+.primary-button:hover {
+    background: #222;
+}
+
+.search-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+#search-status {
+    min-height: 20px;
+    color: #777;
+    font-size: 12px;
+}

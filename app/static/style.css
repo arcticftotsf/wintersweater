@@ -1,4 +1,4 @@
-* {
+/* * {
     box-sizing: border-box;
 }
 
@@ -36,9 +36,9 @@ button {
 
 button:hover {
     background: #f1f1f1;
-}
+} */
 
-.toolbar {
+/* .toolbar {
     height: var(--toolbar-height);
     display: flex;
     align-items: center;
@@ -179,8 +179,8 @@ button:hover {
     flex-direction: column;
     align-items: center;
     gap: 24px;
-}
-
+} */
+/* 
 .page {
     position: relative;
     flex-shrink: 0;
@@ -227,8 +227,8 @@ button:hover {
     text-align: center;
     color: #777;
     font: 10px sans-serif;
-}
-
+} */
+/* 
 .menu-overlay,
 .dialog-overlay {
     position: fixed;
@@ -385,8 +385,8 @@ button:hover {
     min-height: 20px;
     color: #777;
     font-size: 12px;
-}
-
+} */
+/* 
 @media print {
     @page {
         margin: 0;
@@ -436,4 +436,4 @@ button:hover {
         overflow: hidden;
     }
 }
-
+ */
