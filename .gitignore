@@ -230,3 +230,5 @@ __marimo__/
 
 # Tauri build
 src-tauri/target/
+
+*.pdf
