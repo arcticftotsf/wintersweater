@@ -132,3 +132,24 @@ export function initializeUI() {
     initializeButtons();
     initializeShortcuts();
 }
+
+async function initializeVersionDisplay() {
+    const element = document.getElementById("app-version");
+
+    if (!element) return;
+
+    try {
+        const response = await fetch("/version.json");
+
+        if (!response.ok) {
+            throw new Error("バージョン情報を取得できません");
+        }
+
+        const config = await response.json();
+
+        element.textContent = `Version ${config.version}`;
+    } catch (error) {
+        console.error(error);
+        element.textContent = "Version 不明";
+    }
+}
