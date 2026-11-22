@@ -1,5 +1,6 @@
 
 use std::{
+    fs::{self, OpenOptions},
     net::{SocketAddr, TcpStream},
     path::PathBuf,
     process::{Child, Command, Stdio},
@@ -16,7 +17,9 @@ fn backend_path(app: &tauri::App) -> Result<PathBuf, Box<dyn std::error::Error>>
     #[cfg(debug_assertions)]
     {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../packaging/windows/wintersweater-backend.exe");
+            .join("../packaging/windows/wintersweater-backend")
+            .join("wintersweater-backend.exe");
+
         return Ok(path);
     }
 
@@ -32,6 +35,7 @@ fn backend_path(app: &tauri::App) -> Result<PathBuf, Box<dyn std::error::Error>>
 
 fn backend_is_running() -> bool {
     let address: SocketAddr = "127.0.0.1:8765".parse().unwrap();
+
     TcpStream::connect_timeout(&address, Duration::from_millis(300)).is_ok()
 }
 
@@ -41,6 +45,13 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            let app_data_dir = app.path().app_data_dir()?;
+            let log_dir = app_data_dir.join("logs");
+
+            fs::create_dir_all(&log_dir)?;
+
+            let log_path = log_dir.join("backend.log");
+
             let child = if backend_is_running() {
                 None
             } else {
@@ -54,10 +65,18 @@ pub fn run() {
                     .into());
                 }
 
+                let stdout = OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&log_path)?;
+
+                let stderr = stdout.try_clone()?;
+
                 let child = Command::new(executable)
+                    .current_dir(&app_data_dir)
                     .stdin(Stdio::null())
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
+                    .stdout(Stdio::from(stdout))
+                    .stderr(Stdio::from(stderr))
                     .spawn()?;
 
                 Some(child)
@@ -65,21 +84,35 @@ pub fn run() {
 
             app.manage(BackendProcess(Mutex::new(child)));
 
-            for _ in 0..100 {
+            for _ in 0..200 {
                 if backend_is_running() {
                     return Ok(());
                 }
 
-                if let Some(child) = app.state::<BackendProcess>().0.lock().unwrap().as_mut() {
+                if let Some(child) = app
+                    .state::<BackendProcess>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .as_mut()
+                {
                     if child.try_wait()?.is_some() {
-                        return Err("バックエンドが起動直後に終了しました".into());
+                        return Err(format!(
+                            "バックエンドが起動直後に終了しました。ログ: {}",
+                            log_path.display()
+                        )
+                        .into());
                     }
                 }
 
                 thread::sleep(Duration::from_millis(100));
             }
 
-            Err("バックエンドの起動がタイムアウトしました".into())
+            Err(format!(
+                "バックエンドの起動がタイムアウトしました。ログ: {}",
+                log_path.display()
+            )
+            .into())
         });
 
     builder

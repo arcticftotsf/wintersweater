@@ -1,7 +1,8 @@
+
 {
   "bundle": {
     "resources": {
-      "../packaging/windows/wintersweater-backend.exe": "backend/wintersweater-backend.exe"
+      "../packaging/windows/wintersweater-backend": "backend"
     }
   }
 }
