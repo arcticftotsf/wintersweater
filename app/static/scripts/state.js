@@ -7,7 +7,21 @@ export const elements = {
     pageInfo: document.getElementById("page-info"),
 };
 
-export const API_BASE_URL = "http://127.0.0.1:8000";
+// export const API_BASE_URL = "http://127.0.0.1:8000";
+
+const apiConfig = await fetch("/config/api.json").then(response => {
+    if (!response.ok) {
+        throw new Error("API設定ファイルを読み込めませんでした");
+    }
+    return response.json();
+});
+
+const isTauri = Boolean(window.__TAURI_INTERNALS__);
+
+export const API_BASE_URL = isTauri
+    ? apiConfig.desktop.baseUrl
+    : apiConfig.development.baseUrl;
+
 
 export const DEFAULT_SETTINGS = {
     paper: "A4",
