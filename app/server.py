@@ -37,6 +37,15 @@ os.environ.setdefault(
 )
 
 # 環境変数を設定してからFastAPIを読み込む
+# 静的ファイルの配置場所を設定する
+if getattr(sys, "frozen", False):
+    static_dir = Path(sys._MEIPASS) / "app" / "static"
+else:
+    static_dir = Path(__file__).resolve().parent / "static"
+
+os.environ.setdefault("STATIC_DIR", str(static_dir))
+
+# 環境変数を設定してからFastAPIを読み込む
 from app.main import app
 
 

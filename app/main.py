@@ -292,8 +292,10 @@ def empty_trash():
     }
 
 
+STATIC_DIR = os.getenv("STATIC_DIR", "app/static")
+
 app.mount(
     "/",
-    StaticFiles(directory="app/static", html=True),
+    StaticFiles(directory=STATIC_DIR, html=True),
     name="static",
 )
