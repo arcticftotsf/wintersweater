@@ -169,8 +169,8 @@ export async function deleteDocument(id, title) {
         return;
     }
 
-    const confirmed = window.confirm(
-        `「${title}」をゴミ箱に移動しますか？`
+    const confirmed = await window.confirm(
+    `「${title}」をゴミ箱に移動しますか？`
     );
 
     if (!confirmed) return;
@@ -225,9 +225,13 @@ function formatDeletedAt(value) {
 // ゴミ箱一覧の読み込みと描画
 export async function loadTrash() {
     const list = document.getElementById("trash-list");
+    const emptyTrashButton = document.getElementById("empty-trash-button");
     const items = await request("/api/trash");
 
     list.replaceChildren();
+
+    // ゴミ箱が空なら完全削除ボタンを無効化
+    emptyTrashButton.disabled = items.length === 0;
 
     if (items.length === 0) {
         const empty = document.createElement("li");
@@ -300,7 +304,7 @@ export async function restoreDocument(id) {
 
 // ゴミ箱内の原稿を完全削除
 export async function permanentlyDeleteDocument(id, title) {
-    const confirmed = window.confirm(
+    const confirmed = await window.confirm(
         `「${title}」を完全に削除しますか？\n\nこの操作は取り消せません。`
     );
 
@@ -321,7 +325,7 @@ export async function permanentlyDeleteDocument(id, title) {
 
 // ゴミ箱を空にする
 export async function emptyTrash() {
-    const confirmed = window.confirm(
+    const confirmed = await window.confirm(
         "ゴミ箱内の原稿をすべて完全に削除しますか？\n\nこの操作は取り消せません。"
     );
 

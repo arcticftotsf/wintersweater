@@ -138,6 +138,7 @@ function initializeButtons() {
         .addEventListener("click", emptyTrash);
 
     elements.titleInput.addEventListener("input", scheduleSave);
+    
 }
 
 function initializeShortcuts() {

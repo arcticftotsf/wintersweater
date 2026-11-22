@@ -156,3 +156,87 @@
     color: #777;
     font-size: 12px;
 }
+/* ゴミ箱 */
+
+.trash-content {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.trash-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.trash-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.trash-item-info {
+    min-width: 0;
+}
+
+.trash-item-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.trash-item-date {
+    margin-top: 6px;
+    color: #888;
+    font-size: 12px;
+}
+
+.trash-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.trash-item-actions button,
+.trash-content > .danger-button {
+    padding: 7px 12px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.trash-item-actions button:hover {
+    background: rgba(128, 128, 128, 0.12);
+}
+
+.trash-item-actions .danger-button,
+.trash-content > .danger-button {
+    color: #b42318;
+    border-color: #b42318;
+}
+
+.trash-item-actions .danger-button:hover,
+.trash-content > .danger-button:hover {
+    background: rgba(180, 35, 24, 0.08);
+}
+
+.trash-content > .danger-button {
+    margin-top: 24px;
+}
+
+.trash-empty {
+    padding: 32px 12px;
+    color: #888;
+    text-align: center;
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+button:disabled:hover {
+    background: white;
+}
