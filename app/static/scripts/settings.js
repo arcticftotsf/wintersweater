@@ -1,3 +1,4 @@
+
 import {
     state,
     DEFAULT_SETTINGS,
@@ -5,6 +6,105 @@ import {
 } from "./state.js";
 
 import { renderPages } from "./editor.js";
+
+const FIELD_RULES = {
+    "setting-chars": {
+        key: "charsPerLine",
+        label: "1行の文字数",
+        min: 1,
+        max: 200,
+        integer: true,
+    },
+    "setting-lines": {
+        key: "linesPerPage",
+        label: "1ページの行数",
+        min: 1,
+        max: 100,
+        integer: true,
+    },
+    "setting-font-size": {
+        key: "fontSize",
+        label: "文字サイズ",
+        min: 6,
+        max: 40,
+    },
+    "setting-page-start": {
+        key: "pageNumberStart",
+        label: "開始ページ番号",
+        min: 1,
+        max: 100000,
+        integer: true,
+    },
+    "setting-margin-top": {
+        key: "marginTop",
+        label: "上余白",
+        min: 0,
+        max: 100,
+    },
+    "setting-margin-bottom": {
+        key: "marginBottom",
+        label: "下余白",
+        min: 0,
+        max: 100,
+    },
+    "setting-margin-left": {
+        key: "marginLeft",
+        label: "左余白",
+        min: 0,
+        max: 100,
+    },
+    "setting-margin-right": {
+        key: "marginRight",
+        label: "右余白",
+        min: 0,
+        max: 100,
+    },
+};
+
+function validateNumber(value, rule) {
+    if (value.trim() === "") {
+        return `${rule.label}を入力してください`;
+    }
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return `${rule.label}は数値で入力してください`;
+    }
+
+    if (number < rule.min || number > rule.max) {
+        return `${rule.label}は${rule.min}～${rule.max}の範囲で入力してください`;
+    }
+
+    if (rule.integer && !Number.isInteger(number)) {
+        return `${rule.label}は整数で入力してください`;
+    }
+
+    return null;
+}
+
+function validateSettings(settings) {
+    for (const [id, rule] of Object.entries(FIELD_RULES)) {
+        const error = validateNumber(
+            String(settings[rule.key] ?? ""),
+            rule
+        );
+
+        if (error) {
+            return error;
+        }
+    }
+
+    if (!PAPER_SIZES[settings.paper]) {
+        return "用紙サイズが不正です";
+    }
+
+    if (typeof settings.showPageNumber !== "boolean") {
+        return "ページ番号の設定が不正です";
+    }
+
+    return null;
+}
 
 export function fillSettingsForm() {
     const settings = state.currentSettings;
@@ -25,53 +125,32 @@ export function fillSettingsForm() {
 }
 
 export function readSettingsForm() {
-    const number = (id, fallback) => {
-        const value = Number(document.getElementById(id).value);
-        return Number.isFinite(value) ? value : fallback;
-    };
-
-    return {
+    const settings = {
         paper: document.getElementById("setting-paper").value,
-
-        charsPerLine: Math.min(200, Math.max(
-            1, number("setting-chars", 40)
-        )),
-
-        linesPerPage: Math.min(100, Math.max(
-            1, number("setting-lines", 30)
-        )),
-
-        fontSize: Math.min(40, Math.max(
-            6, number("setting-font-size", 10.5)
-        )),
-
-        pageNumberStart: Math.max(
-            1, number("setting-page-start", 1)
-        ),
-
-        marginTop: Math.min(100, Math.max(
-            0, number("setting-margin-top", 20)
-        )),
-
-        marginBottom: Math.min(100, Math.max(
-            0, number("setting-margin-bottom", 20)
-        )),
-
-        marginLeft: Math.min(100, Math.max(
-            0, number("setting-margin-left", 20)
-        )),
-
-        marginRight: Math.min(100, Math.max(
-            0, number("setting-margin-right", 20)
-        )),
 
         showPageNumber:
             document.getElementById("setting-show-page-number").checked,
     };
+
+    for (const [id, rule] of Object.entries(FIELD_RULES)) {
+        settings[rule.key] = Number(
+            document.getElementById(id).value
+        );
+    }
+
+    return settings;
 }
 
 export function applySettings() {
-    state.currentSettings = readSettingsForm();
+    const settings = readSettingsForm();
+    const error = validateSettings(settings);
+
+    if (error) {
+        alert(error);
+        return;
+    }
+
+    state.currentSettings = settings;
 
     renderPages();
 
@@ -103,7 +182,7 @@ export function exportSettings() {
     link.download = "wintersweater-settings.json";
     link.click();
 
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function importSettings(file) {
@@ -113,6 +192,14 @@ export async function importSettings(file) {
         const text = await file.text();
         const data = JSON.parse(text);
         const imported = data.settings || data;
+
+        if (
+            !imported ||
+            typeof imported !== "object" ||
+            Array.isArray(imported)
+        ) {
+            throw new Error("設定データの形式が不正です");
+        }
 
         const allowed = [
             "paper",
@@ -135,8 +222,10 @@ export async function importSettings(file) {
             }
         }
 
-        if (!PAPER_SIZES[settings.paper]) {
-            throw new Error("用紙サイズが不正です");
+        const error = validateSettings(settings);
+
+        if (error) {
+            throw new Error(error);
         }
 
         state.currentSettings = settings;

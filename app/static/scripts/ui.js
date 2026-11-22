@@ -1,9 +1,12 @@
+
 import { elements } from "./state.js";
 
 import {
     saveDocument,
     createDocument,
     scheduleSave,
+    loadTrash,
+    emptyTrash,
 } from "./documents.js";
 
 import {
@@ -37,6 +40,25 @@ export function openSearch() {
 export function closeSearch() {
     document.getElementById("search-panel").classList.remove("open");
     document.getElementById("search-overlay").classList.remove("open");
+}
+
+export async function openTrash() {
+    closeMenu();
+
+    document.getElementById("trash-panel").classList.add("open");
+    document.getElementById("trash-overlay").classList.add("open");
+
+    try {
+        await loadTrash();
+    } catch (error) {
+        console.error(error);
+        alert(`ゴミ箱を読み込めませんでした: ${error.message}`);
+    }
+}
+
+export function closeTrash() {
+    document.getElementById("trash-panel").classList.remove("open");
+    document.getElementById("trash-overlay").classList.remove("open");
 }
 
 function initializeButtons() {
@@ -103,6 +125,18 @@ function initializeButtons() {
             window.print();
         });
 
+    document.getElementById("open-trash-button")
+        .addEventListener("click", openTrash);
+
+    document.getElementById("close-trash-button")
+        .addEventListener("click", closeTrash);
+
+    document.getElementById("trash-overlay")
+        .addEventListener("click", closeTrash);
+
+    document.getElementById("empty-trash-button")
+        .addEventListener("click", emptyTrash);
+
     elements.titleInput.addEventListener("input", scheduleSave);
 }
 
@@ -124,6 +158,7 @@ function initializeShortcuts() {
             closeMenu();
             closeSettings();
             closeSearch();
+            closeTrash();
         }
     });
 }
@@ -131,6 +166,7 @@ function initializeShortcuts() {
 export function initializeUI() {
     initializeButtons();
     initializeShortcuts();
+    initializeVersionDisplay();
 }
 
 async function initializeVersionDisplay() {

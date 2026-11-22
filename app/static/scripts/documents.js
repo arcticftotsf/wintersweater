@@ -1,9 +1,12 @@
+
 import { elements, state, DEFAULT_SETTINGS } from "./state.js";
 import { request } from "./api.js";
+
 import {
     renderPages,
     getCurrentContentFromPages,
 } from "./editor.js";
+
 import { fillSettingsForm } from "./settings.js";
 
 export function setSaveStatus(message) {
@@ -86,7 +89,7 @@ export async function loadDocuments() {
         deleteButton.type = "button";
         deleteButton.className = "document-delete-button";
         deleteButton.textContent = "削除";
-        deleteButton.title = `${doc.title}を削除`;
+        deleteButton.title = `${doc.title}をゴミ箱に移動`;
 
         deleteButton.addEventListener("click", () => {
             deleteDocument(doc.id, doc.title);
@@ -113,6 +116,7 @@ export async function openDocument(id) {
         ...(doc.settings || {}),
     };
 
+    elements.titleInput.disabled = false;
     elements.titleInput.value = doc.title;
 
     renderPages();
@@ -131,6 +135,7 @@ export function clearEditor() {
     state.currentSettings = { ...DEFAULT_SETTINGS };
 
     elements.titleInput.value = "";
+    elements.titleInput.disabled = true;
 
     renderPages();
     fillSettingsForm();
@@ -165,7 +170,7 @@ export async function deleteDocument(id, title) {
     }
 
     const confirmed = window.confirm(
-        `「${title}」を削除しますか？\n\nこの操作は取り消せません。未保存の変更も失われます。`
+        `「${title}」をゴミ箱に移動しますか？`
     );
 
     if (!confirmed) return;
@@ -197,10 +202,143 @@ export async function deleteDocument(id, title) {
             await loadDocuments();
         }
 
-        setSaveStatus("削除しました");
+        setSaveStatus("ゴミ箱に移動しました");
     } catch (error) {
         console.error("deleteDocument failed:", error);
         setSaveStatus(`削除失敗: ${error.message}`);
+    }
+}
+
+// ゴミ箱の日時表示
+function formatDeletedAt(value) {
+    if (!value) return "日時不明";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString("ja-JP");
+}
+
+// ゴミ箱一覧の読み込みと描画
+export async function loadTrash() {
+    const list = document.getElementById("trash-list");
+    const items = await request("/api/trash");
+
+    list.replaceChildren();
+
+    if (items.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "trash-empty";
+        empty.textContent = "ゴミ箱は空です";
+        list.appendChild(empty);
+        return items;
+    }
+
+    items.forEach(item => {
+        const li = document.createElement("li");
+        li.className = "trash-item";
+
+        const info = document.createElement("div");
+        info.className = "trash-item-info";
+
+        const title = document.createElement("div");
+        title.className = "trash-item-title";
+        title.textContent = item.title;
+
+        const deletedAt = document.createElement("div");
+        deletedAt.className = "trash-item-date";
+        deletedAt.textContent =
+            `削除日時: ${formatDeletedAt(item.deleted_at)}`;
+
+        info.append(title, deletedAt);
+
+        const actions = document.createElement("div");
+        actions.className = "trash-item-actions";
+
+        const restoreButton = document.createElement("button");
+        restoreButton.type = "button";
+        restoreButton.textContent = "復元";
+        restoreButton.addEventListener("click", () => {
+            restoreDocument(item.id);
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "danger-button";
+        deleteButton.textContent = "完全削除";
+        deleteButton.addEventListener("click", () => {
+            permanentlyDeleteDocument(item.id, item.title);
+        });
+
+        actions.append(restoreButton, deleteButton);
+        li.append(info, actions);
+        list.appendChild(li);
+    });
+
+    return items;
+}
+
+// ゴミ箱から復元
+export async function restoreDocument(id) {
+    try {
+        await request(`/api/documents/${id}/restore`, {
+            method: "POST",
+        });
+
+        await loadTrash();
+        await loadDocuments();
+
+        setSaveStatus("原稿を復元しました");
+    } catch (error) {
+        console.error("restoreDocument failed:", error);
+        alert(`原稿を復元できませんでした: ${error.message}`);
+    }
+}
+
+// ゴミ箱内の原稿を完全削除
+export async function permanentlyDeleteDocument(id, title) {
+    const confirmed = window.confirm(
+        `「${title}」を完全に削除しますか？\n\nこの操作は取り消せません。`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        await request(`/api/trash/${id}`, {
+            method: "DELETE",
+        });
+
+        await loadTrash();
+        setSaveStatus("原稿を完全削除しました");
+    } catch (error) {
+        console.error("permanentlyDeleteDocument failed:", error);
+        alert(`原稿を完全削除できませんでした: ${error.message}`);
+    }
+}
+
+// ゴミ箱を空にする
+export async function emptyTrash() {
+    const confirmed = window.confirm(
+        "ゴミ箱内の原稿をすべて完全に削除しますか？\n\nこの操作は取り消せません。"
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const result = await request("/api/trash", {
+            method: "DELETE",
+        });
+
+        await loadTrash();
+        setSaveStatus(
+            `${result.deleted_count}件の原稿を完全削除しました`
+        );
+    } catch (error) {
+        console.error("emptyTrash failed:", error);
+        alert(`ゴミ箱を空にできませんでした: ${error.message}`);
     }
 }
 

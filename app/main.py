@@ -1,3 +1,4 @@
+
 import json
 import os
 import sqlite3
@@ -34,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def now_utc():
+    return datetime.now(timezone.utc).isoformat()
 
 
 @contextmanager
@@ -73,6 +78,12 @@ def init_db():
                 ADD COLUMN settings TEXT NOT NULL DEFAULT '{}'
             """)
 
+        if "deleted_at" not in columns:
+            conn.execute("""
+                ALTER TABLE documents
+                ADD COLUMN deleted_at TEXT DEFAULT NULL
+            """)
+
 
 def parse_document(row):
     result = dict(row)
@@ -87,6 +98,19 @@ def parse_document(row):
         **settings,
     }
     return result
+
+
+def get_active_document(conn, document_id):
+    row = conn.execute("""
+        SELECT *
+        FROM documents
+        WHERE id = ? AND deleted_at IS NULL
+    """, (document_id,)).fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return row
 
 
 class DocumentCreate(BaseModel):
@@ -110,6 +134,7 @@ def list_documents():
         rows = conn.execute("""
             SELECT id, title, updated_at
             FROM documents
+            WHERE deleted_at IS NULL
             ORDER BY updated_at DESC
         """).fetchall()
 
@@ -118,7 +143,7 @@ def list_documents():
 
 @app.post("/api/documents")
 def create_document(data: DocumentCreate):
-    now = datetime.now(timezone.utc).isoformat()
+    now = now_utc()
     settings_json = json.dumps(DEFAULT_SETTINGS, ensure_ascii=False)
 
     with get_db() as conn:
@@ -141,20 +166,14 @@ def create_document(data: DocumentCreate):
 @app.get("/api/documents/{document_id}")
 def get_document(document_id: int):
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT * FROM documents WHERE id = ?",
-            (document_id,)
-        ).fetchone()
-
-    if row is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+        row = get_active_document(conn, document_id)
 
     return parse_document(row)
 
 
 @app.put("/api/documents/{document_id}")
 def update_document(document_id: int, data: DocumentUpdate):
-    now = datetime.now(timezone.utc).isoformat()
+    now = now_utc()
 
     settings = {
         **DEFAULT_SETTINGS,
@@ -171,6 +190,7 @@ def update_document(document_id: int, data: DocumentUpdate):
                 settings = ?,
                 updated_at = ?
             WHERE id = ?
+              AND deleted_at IS NULL
         """, (
             data.title,
             data.content,
@@ -188,18 +208,88 @@ def update_document(document_id: int, data: DocumentUpdate):
     }
 
 
+# 原稿をゴミ箱へ移動
 @app.delete("/api/documents/{document_id}")
 def delete_document(document_id: int):
+    now = now_utc()
+
     with get_db() as conn:
-        cursor = conn.execute(
-            "DELETE FROM documents WHERE id = ?",
-            (document_id,)
-        )
+        cursor = conn.execute("""
+            UPDATE documents
+            SET deleted_at = ?
+            WHERE id = ?
+              AND deleted_at IS NULL
+        """, (now, document_id))
 
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Document not found")
 
     return {"success": True}
+
+
+# ゴミ箱の一覧
+@app.get("/api/trash")
+def list_trash():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, title, updated_at, deleted_at
+            FROM documents
+            WHERE deleted_at IS NOT NULL
+            ORDER BY deleted_at DESC
+        """).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+# ゴミ箱から復元
+@app.post("/api/documents/{document_id}/restore")
+def restore_document(document_id: int):
+    now = now_utc()
+
+    with get_db() as conn:
+        cursor = conn.execute("""
+            UPDATE documents
+            SET deleted_at = NULL,
+                updated_at = ?
+            WHERE id = ?
+              AND deleted_at IS NOT NULL
+        """, (now, document_id))
+
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Trash item not found")
+
+    return {"success": True}
+
+
+# ゴミ箱内の原稿を完全削除
+@app.delete("/api/trash/{document_id}")
+def permanently_delete_document(document_id: int):
+    with get_db() as conn:
+        cursor = conn.execute("""
+            DELETE FROM documents
+            WHERE id = ?
+              AND deleted_at IS NOT NULL
+        """, (document_id,))
+
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Trash item not found")
+
+    return {"success": True}
+
+
+# ゴミ箱を空にする
+@app.delete("/api/trash")
+def empty_trash():
+    with get_db() as conn:
+        cursor = conn.execute("""
+            DELETE FROM documents
+            WHERE deleted_at IS NOT NULL
+        """)
+
+    return {
+        "success": True,
+        "deleted_count": cursor.rowcount,
+    }
 
 
 app.mount(
