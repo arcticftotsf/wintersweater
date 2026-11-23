@@ -1,0 +1,8 @@
+
+{
+  "bundle": {
+    "resources": {
+      "../packaging/windows/wintersweater-backend": "backend"
+    }
+  }
+}

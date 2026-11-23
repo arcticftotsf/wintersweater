@@ -1,4 +1,4 @@
-* {
+/* * {
     box-sizing: border-box;
 }
 
@@ -36,9 +36,9 @@ button {
 
 button:hover {
     background: #f1f1f1;
-}
+} */
 
-.toolbar {
+/* .toolbar {
     height: var(--toolbar-height);
     display: flex;
     align-items: center;
@@ -112,19 +112,51 @@ button:hover {
     list-style: none;
 }
 
+
 #document-list li {
-    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
     margin-bottom: 4px;
     border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    overflow-wrap: anywhere;
 }
 
 #document-list li:hover,
 #document-list li.active {
     background: #e8e6e1;
 }
+
+.document-open-button {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.document-open-button:hover {
+    background: #dedbd4;
+}
+
+.document-delete-button {
+    flex-shrink: 0;
+    padding: 4px 7px;
+    border: none;
+    background: transparent;
+    color: #999;
+    font-size: 11px;
+}
+
+.document-delete-button:hover {
+    background: #f3dddd;
+    color: #b33;
+}
+
 
 .editor-area {
     flex: 1;
@@ -147,8 +179,8 @@ button:hover {
     flex-direction: column;
     align-items: center;
     gap: 24px;
-}
-
+} */
+/* 
 .page {
     position: relative;
     flex-shrink: 0;
@@ -195,8 +227,8 @@ button:hover {
     text-align: center;
     color: #777;
     font: 10px sans-serif;
-}
-
+} */
+/* 
 .menu-overlay,
 .dialog-overlay {
     position: fixed;
@@ -353,8 +385,8 @@ button:hover {
     min-height: 20px;
     color: #777;
     font-size: 12px;
-}
-
+} */
+/* 
 @media print {
     @page {
         margin: 0;
@@ -404,3 +436,4 @@ button:hover {
         overflow: hidden;
     }
 }
+ */

@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wintersweater</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/editor.css">
+    <link rel="stylesheet" href="/css/panels.css">
+    <link rel="stylesheet" href="/css/print.css">
 </head>
 <body>
     <header class="toolbar">
@@ -15,6 +19,7 @@
             type="text"
             value="新しい原稿"
             aria-label="原稿タイトル"
+            disabled
         >
 
         <div class="toolbar-actions">
@@ -65,10 +70,10 @@
         <section class="menu-section">
             <h3>ファイル</h3>
             <button id="export-settings-button" class="menu-item">
-                設定をエクスポート
+                設定JSONをエクスポート
             </button>
             <label class="menu-item file-label" for="import-settings-file">
-                設定をインポート
+                設定JSONをインポート
             </label>
             <input
                 id="import-settings-file"
@@ -80,6 +85,17 @@
                 印刷・PDF出力
             </button>
         </section>
+
+        <section class="menu-section">
+            <h3>管理</h3>
+            <button id="open-trash-button" class="menu-item">
+                ゴミ箱
+            </button>
+        </section>
+
+        <div id="app-version" class="menu-version">
+            Version 読み込み中...
+        </div>
     </aside>
 
     <div id="settings-overlay" class="dialog-overlay"></div>
@@ -194,6 +210,26 @@
         <p id="search-status"></p>
     </section>
 
-    <script src="/app.js"></script>
+    <div id="trash-overlay" class="dialog-overlay"></div>
+
+    <section id="trash-panel" class="search-panel">
+        <div class="panel-header">
+            <h2>ゴミ箱</h2>
+            <button id="close-trash-button" aria-label="閉じる">×</button>
+        </div>
+
+        <div class="trash-content">
+            <ul id="trash-list" class="trash-list"></ul>
+
+            <button
+                id="empty-trash-button"
+                class="danger-button"
+            >
+                ゴミ箱を空にする
+            </button>
+        </div>
+    </section>
+
+    <script type="module" src="/app.js"></script>
 </body>
 </html>

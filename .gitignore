@@ -227,3 +227,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local Python virtual environments
+.venv*/
+
+# PyInstaller Windows backend build output
+packaging/windows/wintersweater-backend/

@@ -1,0 +1,51 @@
+
+@media print {
+    @page {
+        margin: 0;
+    }
+
+    body {
+        background: white;
+    }
+
+    .toolbar,
+    .sidebar,
+    .editor-toolbar,
+    .menu-panel,
+    .menu-overlay,
+    .dialog-overlay,
+    .settings-panel,
+    .search-panel {
+        display: none !important;
+    }
+
+    .workspace,
+    .editor-area,
+    .pages {
+        display: block;
+        height: auto;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .pages {
+        display: block;
+    }
+
+    .page {
+        margin: 0;
+        box-shadow: none;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .page-editor {
+        overflow: hidden;
+    }
+}
+
