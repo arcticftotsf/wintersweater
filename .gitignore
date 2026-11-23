@@ -233,3 +233,7 @@ __marimo__/
 
 # PyInstaller Windows backend build output
 packaging/windows/wintersweater-backend/
+# Tauri build
+src-tauri/target/
+
+*.pdf
