@@ -102,6 +102,28 @@ function getGlobalSelectionOffset(editor) {
     return offset;
 }
 
+export function selectAllText() {
+    const editors = [
+        ...elements.editorPages.querySelectorAll(".page-editor"),
+    ];
+
+    if (editors.length === 0) return;
+
+    const first = editors[0];
+    const last = editors[editors.length - 1];
+
+    first.focus();
+
+    const range = document.createRange();
+    range.setStart(first, 0);
+    range.setEnd(last, last.childNodes.length);
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+
 export function focusEditorAt(globalOffset) {
     const editors = [
         ...elements.editorPages.querySelectorAll(".page-editor"),

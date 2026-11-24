@@ -1,5 +1,6 @@
 
 import { elements } from "./state.js";
+import { selectAllText } from "./editor.js";
 
 import {
     saveDocument,
@@ -144,15 +145,28 @@ function initializeButtons() {
 function initializeShortcuts() {
     document.addEventListener("keydown", event => {
         const key = event.key.toLowerCase();
+        const modifier = event.ctrlKey || event.metaKey;
 
-        if ((event.ctrlKey || event.metaKey) && key === "s") {
+        if (modifier && key === "s") {
             event.preventDefault();
             saveDocument();
+            return;
         }
 
-        if ((event.ctrlKey || event.metaKey) && key === "f") {
+        if (modifier && key === "f") {
             event.preventDefault();
             openSearch();
+            return;
+        }
+
+        if (modifier && key === "a") {
+            const active = document.activeElement;
+
+            if (active?.classList?.contains("page-editor")) {
+                event.preventDefault();
+                selectAllText();
+                return;
+            }
         }
 
         if (event.key === "Escape") {
