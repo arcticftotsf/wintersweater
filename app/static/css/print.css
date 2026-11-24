@@ -49,3 +49,15 @@
     }
 }
 
+@media print {
+    .page-editor .novel-paragraph {
+        display: block;
+        margin: 0;
+        padding: 0;
+        text-indent: 1em;
+    }
+
+    .page-editor .novel-paragraph.no-indent {
+        text-indent: 0;
+    }
+}

@@ -66,13 +66,22 @@ function getSelectionOffset(editor) {
     if (!selection || !selection.rangeCount) return 0;
 
     const range = selection.getRangeAt(0);
+
     if (!editor.contains(range.startContainer)) return 0;
 
-    const before = document.createRange();
+    const before = range.cloneRange();
     before.selectNodeContents(editor);
     before.setEnd(range.startContainer, range.startOffset);
 
-    return [...before.toString()].length;
+    const temp = document.createElement("div");
+    temp.appendChild(before.cloneContents());
+
+    const text = temp.innerText
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\n$/, "");
+
+    return [...text].length;
 }
 
 function getGlobalSelectionOffset(editor) {
@@ -110,27 +119,57 @@ export function focusEditorAt(globalOffset) {
 
             editor.focus();
 
-            const walker = document.createTreeWalker(
-                editor,
-                NodeFilter.SHOW_TEXT
-            );
-
-            let node;
+            const paragraphs = [...editor.children];
             let position = 0;
 
-            while ((node = walker.nextNode())) {
-                const nodeLength = [...node.textContent].length;
+            for (let p = 0; p < paragraphs.length; p++) {
+                const paragraph = paragraphs[p];
+                const nodes = [];
 
-                if (target <= position + nodeLength) {
-                    const local = target - position;
-                    const utf16Offset = [...node.textContent]
-                        .slice(0, local)
-                        .join("")
-                        .length;
+                const walker = document.createTreeWalker(
+                    paragraph,
+                    NodeFilter.SHOW_TEXT
+                );
+
+                let node;
+
+                while ((node = walker.nextNode())) {
+                    nodes.push(node);
+                }
+
+                const paragraphLength = nodes.reduce(
+                    (sum, item) => sum + [...item.textContent].length,
+                    0
+                );
+
+                if (target <= position + paragraphLength) {
+                    let local = target - position;
+
+                    for (const current of nodes) {
+                        const chars = [...current.textContent];
+
+                        if (local <= chars.length) {
+                            const utf16 = chars
+                                .slice(0, local)
+                                .join("")
+                                .length;
+
+                            const range = document.createRange();
+                            range.setStart(current, utf16);
+                            range.collapse(true);
+
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            return;
+                        }
+
+                        local -= chars.length;
+                    }
 
                     const range = document.createRange();
-                    range.setStart(node, utf16Offset);
-                    range.collapse(true);
+                    range.selectNodeContents(paragraph);
+                    range.collapse(false);
 
                     const selection = window.getSelection();
                     selection.removeAllRanges();
@@ -138,7 +177,24 @@ export function focusEditorAt(globalOffset) {
                     return;
                 }
 
-                position += nodeLength;
+                position += paragraphLength;
+
+                if (p < paragraphs.length - 1) {
+                    if (target === position) {
+                        const next = paragraphs[p + 1];
+                        const range = document.createRange();
+
+                        range.setStart(next, 0);
+                        range.collapse(true);
+
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        return;
+                    }
+
+                    position++;
+                }
             }
 
             const range = document.createRange();
@@ -295,6 +351,7 @@ export function renderPages(focusOffset = null) {
         document.activeElement?.classList?.contains("page-editor");
 
     const pages = splitIntoPages(state.currentContent);
+    const allCharacters = [...state.currentContent];
 
     elements.editorPages.replaceChildren();
     elements.editorPages.appendChild(getPageStyle());
@@ -305,11 +362,26 @@ export function renderPages(focusOffset = null) {
         const page = document.createElement("div");
         page.className = "page";
 
-        page.style.setProperty("--margin-top", `${state.currentSettings.marginTop}mm`);
-        page.style.setProperty("--margin-bottom", `${state.currentSettings.marginBottom}mm`);
-        page.style.setProperty("--margin-left", `${state.currentSettings.marginLeft}mm`);
-        page.style.setProperty("--margin-right", `${state.currentSettings.marginRight}mm`);
-        page.style.setProperty("--font-size", `${state.currentSettings.fontSize}pt`);
+        page.style.setProperty(
+            "--margin-top",
+            `${state.currentSettings.marginTop}mm`
+        );
+        page.style.setProperty(
+            "--margin-bottom",
+            `${state.currentSettings.marginBottom}mm`
+        );
+        page.style.setProperty(
+            "--margin-left",
+            `${state.currentSettings.marginLeft}mm`
+        );
+        page.style.setProperty(
+            "--margin-right",
+            `${state.currentSettings.marginRight}mm`
+        );
+        page.style.setProperty(
+            "--font-size",
+            `${state.currentSettings.fontSize}pt`
+        );
 
         const contentArea = document.createElement("div");
         contentArea.className = "page-content";
@@ -322,7 +394,34 @@ export function renderPages(focusOffset = null) {
         editor.setAttribute("aria-label", `${index + 1}ページ目の本文`);
         editor.spellcheck = false;
         editor.dataset.pageIndex = String(index);
-        editor.textContent = pageText;
+
+        const paragraphs = pageText.split("\n");
+
+        paragraphs.forEach((paragraphText, paragraphIndex) => {
+            const paragraph = document.createElement("div");
+            paragraph.className = "novel-paragraph";
+
+            // ページ先頭が前ページから続く段落か判定する
+            const isContinuation =
+                paragraphIndex === 0 &&
+                globalOffset > 0 &&
+                allCharacters[globalOffset - 1] !== "\n";
+
+            // 会話文は字下げしない
+            const isDialogue =
+                paragraphText.startsWith("「") ||
+                paragraphText.startsWith("『");
+
+            // 空行も字下げしない
+            const isEmpty = paragraphText.length === 0;
+
+            if (isContinuation || isDialogue || isEmpty) {
+                paragraph.classList.add("no-indent");
+            }
+
+            paragraph.textContent = paragraphText;
+            editor.appendChild(paragraph);
+        });
 
         editor.addEventListener("input", handleEditorInput);
         editor.addEventListener("keydown", handleEditorKeydown);
@@ -337,12 +436,16 @@ export function renderPages(focusOffset = null) {
             const pageNumber = document.createElement("div");
             pageNumber.className = "page-number";
             pageNumber.textContent =
-                String(Number(state.currentSettings.pageNumberStart) + index);
+                String(
+                    Number(state.currentSettings.pageNumberStart) + index
+                );
 
             page.appendChild(pageNumber);
         }
 
         elements.editorPages.appendChild(page);
+
+        // 次ページの開始位置をコードポイント単位で更新
         globalOffset += [...pageText].length;
     });
 
@@ -358,18 +461,16 @@ export function selectTextRange(globalStart, globalEnd) {
         ...elements.editorPages.querySelectorAll(".page-editor"),
     ];
 
-    let offset = 0;
+    let pageOffset = 0;
 
-    for (const editor of editors) {
-        const text = getEditorText(editor);
-        const length = [...text].length;
+    function locate(editor, target) {
+        const paragraphs = [...editor.children];
+        let position = 0;
 
-        if (globalStart >= offset && globalEnd <= offset + length) {
-            const localStart = globalStart - offset;
-            const localEnd = globalEnd - offset;
-
+        for (let p = 0; p < paragraphs.length; p++) {
+            const paragraph = paragraphs[p];
             const walker = document.createTreeWalker(
-                editor,
+                paragraph,
                 NodeFilter.SHOW_TEXT
             );
 
@@ -380,34 +481,52 @@ export function selectTextRange(globalStart, globalEnd) {
                 nodes.push(node);
             }
 
-            const locate = target => {
-                let position = 0;
+            const length = nodes.reduce(
+                (sum, item) => sum + [...item.textContent].length,
+                0
+            );
+
+            if (target <= position + length) {
+                let local = target - position;
 
                 for (const current of nodes) {
-                    const nodeLength = [...current.textContent].length;
+                    const chars = [...current.textContent];
 
-                    if (target <= position + nodeLength) {
-                        const local = target - position;
-                        const utf16 = [...current.textContent]
-                            .slice(0, local)
-                            .join("")
-                            .length;
-
-                        return { node: current, offset: utf16 };
+                    if (local <= chars.length) {
+                        return {
+                            node: current,
+                            offset: chars.slice(0, local).join("").length,
+                        };
                     }
 
-                    position += nodeLength;
+                    local -= chars.length;
                 }
 
-                const last = nodes[nodes.length - 1];
+                return {
+                    node: paragraph,
+                    offset: paragraph.childNodes.length,
+                };
+            }
 
-                return last
-                    ? { node: last, offset: last.textContent.length }
-                    : null;
-            };
+            position += length;
 
-            const start = locate(localStart);
-            const end = locate(localEnd);
+            if (p < paragraphs.length - 1) {
+                position++;
+            }
+        }
+
+        return null;
+    }
+
+    for (const editor of editors) {
+        const length = [...getEditorText(editor)].length;
+
+        if (
+            globalStart >= pageOffset &&
+            globalEnd <= pageOffset + length
+        ) {
+            const start = locate(editor, globalStart - pageOffset);
+            const end = locate(editor, globalEnd - pageOffset);
 
             if (!start || !end) return false;
 
@@ -415,15 +534,16 @@ export function selectTextRange(globalStart, globalEnd) {
             range.setStart(start.node, start.offset);
             range.setEnd(end.node, end.offset);
 
+            editor.focus();
+
             const selection = window.getSelection();
             selection.removeAllRanges();
             selection.addRange(range);
 
-            editor.focus();
             return true;
         }
 
-        offset += length;
+        pageOffset += length;
     }
 
     return false;
