@@ -234,6 +234,32 @@ export function focusEditorAt(globalOffset) {
     }
 }
 
+// function handleEditorInput(event) {
+//     const editor = event.currentTarget;
+
+//     state.currentContent = getCurrentContentFromPages();
+//     updateCharacterCount();
+
+//     const pages = splitIntoPages(state.currentContent);
+//     const currentEditors = [
+//         ...elements.editorPages.querySelectorAll(".page-editor"),
+//     ];
+
+//     const needsRender =
+//         pages.length !== currentEditors.length ||
+//         currentEditors.some(
+//             item => [...getEditorText(item)].length > getPageCapacity()
+//         );
+
+//     if (needsRender) {
+//         pendingRender = true;
+//     }
+
+//     document.dispatchEvent(
+//         new CustomEvent("editor-content-changed")
+//     );
+// }
+
 function handleEditorInput(event) {
     const editor = event.currentTarget;
 
@@ -245,13 +271,13 @@ function handleEditorInput(event) {
         ...elements.editorPages.querySelectorAll(".page-editor"),
     ];
 
-    const needsRender =
-        pages.length !== currentEditors.length ||
-        currentEditors.some(
-            item => [...getEditorText(item)].length > getPageCapacity()
-        );
+    const requiredPageCount = pages.length;
+    const currentPageCount = currentEditors.length;
 
-    if (needsRender) {
+    // 入力中は既存のエディタDOMを再構築しない
+    if (requiredPageCount > currentPageCount) {
+        pendingRender = true;
+    } else if (requiredPageCount < currentPageCount) {
         pendingRender = true;
     }
 
