@@ -13,11 +13,18 @@ export function setSaveStatus(message) {
     elements.saveStatus.textContent = message;
 }
 
+// export function scheduleSave() {
+//     setSaveStatus("未保存");
+
+//     clearTimeout(state.saveTimer);
+//     state.saveTimer = setTimeout(saveDocument, 1200);
+// }
+
 export function scheduleSave() {
     setSaveStatus("未保存");
 
     clearTimeout(state.saveTimer);
-    state.saveTimer = setTimeout(saveDocument, 1200);
+    state.saveTimer = null;
 }
 
 export async function saveDocument() {

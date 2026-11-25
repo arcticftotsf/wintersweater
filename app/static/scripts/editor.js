@@ -3,7 +3,6 @@ import { elements, state, PAPER_SIZES } from "./state.js";
 let isComposing = false;
 let pendingRender = false;
 let compositionRenderPending = false;
-let lastCompositionEndAt = 0;
 
 export function getPageSize() {
     return PAPER_SIZES[state.currentSettings.paper] || PAPER_SIZES.A4;
@@ -235,7 +234,6 @@ export function focusEditorAt(globalOffset) {
     }
 }
 
-
 function handleEditorInput(event) {
     const editor = event.currentTarget;
 
@@ -254,12 +252,7 @@ function handleEditorInput(event) {
         );
 
     if (needsRender) {
-        if (isComposing || event.isComposing || compositionRenderPending) {
-            pendingRender = true;
-        } else {
-            const offset = getGlobalSelectionOffset(editor);
-            renderPages(offset);
-        }
+        pendingRender = true;
     }
 
     document.dispatchEvent(
@@ -273,36 +266,17 @@ function handleCompositionStart() {
 }
 
 function handleCompositionEnd(event) {
-    lastCompositionEndAt = performance.now();
     isComposing = false;
+
     state.currentContent = getCurrentContentFromPages();
     updateCharacterCount();
 
-    if (pendingRender) {
-        pendingRender = false;
-        const offset = getGlobalSelectionOffset(event.currentTarget);
-        // IME確定直後にDOMを破棄しない
-        requestAnimationFrame(() => {
-            if (document.activeElement?.classList?.contains("page-editor")) {
-                renderPages(offset);
-            }
-        });
-    }
-
-    document.dispatchEvent(new CustomEvent("editor-content-changed"));
+    document.dispatchEvent(
+        new CustomEvent("editor-content-changed")
+    );
 }
 
 function handleEditorKeydown(event) {
-    if (
-        event.key === "Enter" &&
-        performance.now() - lastCompositionEndAt < 100
-    ) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        lastCompositionEndAt = 0;
-        return;
-    }
-
     const editor = event.currentTarget;
     const pageIndex = Number(editor.dataset.pageIndex);
     const selection = window.getSelection();
@@ -341,6 +315,21 @@ function handleEditorKeydown(event) {
     }
 }
 
+// function handleEditorKeyup(event) {
+//     if (!pendingRender || isComposing) return;
+
+//     const editor = event.currentTarget;
+
+//     requestAnimationFrame(() => {
+//         if (isComposing || !pendingRender) return;
+
+//         const offset = getGlobalSelectionOffset(editor);
+//         pendingRender = false;
+//         state.currentContent = getCurrentContentFromPages();
+//         renderPages(offset);
+//     });
+// }
+
 function handlePaste(event) {
     event.preventDefault();
 
@@ -349,6 +338,16 @@ function handlePaste(event) {
 }
 
 export function renderPages(focusOffset = null) {
+
+    elements.editorPages.removeEventListener(
+        "focusout",
+        handleEditorPagesFocusOut
+    );
+    elements.editorPages.addEventListener(
+        "focusout",
+        handleEditorPagesFocusOut
+    );
+
     const hadEditorFocus =
         document.activeElement?.classList?.contains("page-editor");
 
@@ -427,6 +426,7 @@ export function renderPages(focusOffset = null) {
 
         editor.addEventListener("input", handleEditorInput);
         editor.addEventListener("keydown", handleEditorKeydown);
+        // editor.addEventListener("keyup", handleEditorKeyup);
         editor.addEventListener("compositionstart", handleCompositionStart);
         editor.addEventListener("compositionend", handleCompositionEnd);
         editor.addEventListener("paste", handlePaste);
@@ -456,6 +456,23 @@ export function renderPages(focusOffset = null) {
     if (focusOffset !== null || hadEditorFocus) {
         focusEditorAt(focusOffset ?? globalOffset);
     }
+}
+
+function handleEditorPagesFocusOut(event) {
+    if (!pendingRender) return;
+
+    // 別ページへの移動では再描画しない
+    if (event.relatedTarget?.closest?.(".page-editor")) return;
+
+    requestAnimationFrame(() => {
+        if (elements.editorPages.contains(document.activeElement)) return;
+
+        if (pendingRender) {
+            pendingRender = false;
+            state.currentContent = getCurrentContentFromPages();
+            renderPages();
+        }
+    });
 }
 
 export function selectTextRange(globalStart, globalEnd) {
