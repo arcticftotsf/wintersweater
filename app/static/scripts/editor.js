@@ -2,6 +2,8 @@ import { elements, state, PAPER_SIZES } from "./state.js";
 
 let isComposing = false;
 let pendingRender = false;
+let compositionRenderPending = false;
+let lastCompositionEndAt = 0;
 
 export function getPageSize() {
     return PAPER_SIZES[state.currentSettings.paper] || PAPER_SIZES.A4;
@@ -233,34 +235,6 @@ export function focusEditorAt(globalOffset) {
     }
 }
 
-// function handleEditorInput(event) {
-//     const editor = event.currentTarget;
-//     const offset = getGlobalSelectionOffset(editor);
-
-//     state.currentContent = getCurrentContentFromPages();
-//     updateCharacterCount();
-
-//     const pages = splitIntoPages(state.currentContent);
-//     const currentEditors = [
-//         ...elements.editorPages.querySelectorAll(".page-editor"),
-//     ];
-
-//     const needsRender =
-//         pages.length !== currentEditors.length ||
-//         currentEditors.some(item => [...getEditorText(item)].length > getPageCapacity());
-
-//     if (needsRender) {
-//         if (isComposing) {
-//             pendingRender = true;
-//         } else {
-//             renderPages(offset);
-//         }
-//     }
-
-//     document.dispatchEvent(
-//         new CustomEvent("editor-content-changed")
-//     );
-// }
 
 function handleEditorInput(event) {
     const editor = event.currentTarget;
@@ -280,7 +254,7 @@ function handleEditorInput(event) {
         );
 
     if (needsRender) {
-        if (isComposing || event.isComposing) {
+        if (isComposing || event.isComposing || compositionRenderPending) {
             pendingRender = true;
         } else {
             const offset = getGlobalSelectionOffset(editor);
@@ -299,16 +273,14 @@ function handleCompositionStart() {
 }
 
 function handleCompositionEnd(event) {
+    lastCompositionEndAt = performance.now();
     isComposing = false;
-
     state.currentContent = getCurrentContentFromPages();
     updateCharacterCount();
 
     if (pendingRender) {
         pendingRender = false;
-
         const offset = getGlobalSelectionOffset(event.currentTarget);
-
         // IME確定直後にDOMを破棄しない
         requestAnimationFrame(() => {
             if (document.activeElement?.classList?.contains("page-editor")) {
@@ -317,12 +289,20 @@ function handleCompositionEnd(event) {
         });
     }
 
-    document.dispatchEvent(
-        new CustomEvent("editor-content-changed")
-    );
+    document.dispatchEvent(new CustomEvent("editor-content-changed"));
 }
 
 function handleEditorKeydown(event) {
+    if (
+        event.key === "Enter" &&
+        performance.now() - lastCompositionEndAt < 100
+    ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        lastCompositionEndAt = 0;
+        return;
+    }
+
     const editor = event.currentTarget;
     const pageIndex = Number(editor.dataset.pageIndex);
     const selection = window.getSelection();
