@@ -3,6 +3,7 @@ import { elements, state, PAPER_SIZES } from "./state.js";
 let isComposing = false;
 let pendingRender = false;
 let compositionRenderPending = false;
+let outsideClickListenerInstalled = false;
 
 export function getPageSize() {
     return PAPER_SIZES[state.currentSettings.paper] || PAPER_SIZES.A4;
@@ -369,10 +370,21 @@ export function renderPages(focusOffset = null) {
         "focusout",
         handleEditorPagesFocusOut
     );
+    
     elements.editorPages.addEventListener(
         "focusout",
         handleEditorPagesFocusOut
     );
+
+    if (!outsideClickListenerInstalled) {
+    document.addEventListener(
+        "pointerdown",
+        handleEditorDocumentPointerDown,
+        true
+    );
+
+    outsideClickListenerInstalled = true;
+}
 
     const hadEditorFocus =
         document.activeElement?.classList?.contains("page-editor");
@@ -592,6 +604,30 @@ export function selectTextRange(globalStart, globalEnd) {
     }
 
     return false;
+}
+
+function handleEditorDocumentPointerDown(event) {
+    if (!pendingRender || isComposing) return;
+
+    const activeEditor = document.activeElement;
+
+    // 編集中のページがフォーカスされていなければ何もしない
+    if (!activeEditor?.classList?.contains("page-editor")) {
+        return;
+    }
+
+    const target = event.target?.nodeType === Node.ELEMENT_NODE
+        ? event.target
+        : event.target?.parentElement;
+
+    // 別のページの本文をクリックした場合は再描画しない
+    if (target?.closest?.(".page-editor")) {
+        return;
+    }
+
+    // シートの余白やシート外をクリックした場合、
+    // 編集領域からフォーカスを外す
+    activeEditor.blur();
 }
 
 export function replaceTextRange(globalStart, globalEnd, replacement) {
