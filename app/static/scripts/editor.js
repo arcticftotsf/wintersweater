@@ -2,12 +2,56 @@ import { elements, state, PAPER_SIZES } from "./state.js";
 
 let isComposing = false;
 let pendingRender = false;
-// let compositionRenderPending = false;
+let pageRenderFrame = null;
 let outsideClickListenerInstalled = false;
 let selectionListenerInstalled = false;
+let pageScaleObserver = null;
 
 export function getPageSize() {
     return PAPER_SIZES[state.currentSettings.paper] || PAPER_SIZES.A4;
+}
+
+function updatePageScale() {
+    const editorArea = document.querySelector(".editor-area");
+    const toolbar = document.querySelector(".editor-toolbar");
+
+    if (!editorArea || !toolbar) return;
+
+    const paper = getPageSize();
+    const styles = getComputedStyle(editorArea);
+
+    const availableWidth =
+        editorArea.clientWidth -
+        parseFloat(styles.paddingLeft) -
+        parseFloat(styles.paddingRight);
+
+    const availableHeight =
+        editorArea.clientHeight -
+        parseFloat(styles.paddingTop) -
+        parseFloat(styles.paddingBottom) -
+        toolbar.offsetHeight -
+        parseFloat(getComputedStyle(toolbar).marginBottom);
+
+    const pageWidth = paper.width * 96 / 25.4;
+    const pageHeight = paper.height * 96 / 25.4;
+
+    const scale = Math.max(
+        0.8,
+        Math.min(
+            1,
+            availableWidth / pageWidth,
+            availableHeight / pageHeight
+        )
+    );
+
+    elements.editorPages.style.zoom = String(
+        Number.isFinite(scale) && scale > 0 ? scale : 1
+    );
+
+    if (!pageScaleObserver && window.ResizeObserver) {
+        pageScaleObserver = new ResizeObserver(updatePageScale);
+        pageScaleObserver.observe(editorArea);
+    }
 }
 
 export function getPageCapacity() {
@@ -30,12 +74,38 @@ export function splitIntoPages(content) {
 
 export function getPageStyle() {
     const paper = getPageSize();
+    const settings = state.currentSettings;
+
+    const chars = Math.max(1, Number(settings.charsPerLine) || 40);
+    const lines = Math.max(1, Number(settings.linesPerPage) || 30);
+
+    const contentHeight =
+        paper.height - settings.marginTop - settings.marginBottom;
+
+    const contentWidth =
+        paper.width - settings.marginLeft - settings.marginRight;
+
+    const fontSizeMm = settings.fontSize * 25.4 / 72;
+
+    const charSpacing = chars > 1
+        ? (contentHeight - fontSizeMm) / (chars - 1) - fontSizeMm
+        : 0;
+
+    const columnPitch = contentWidth / lines;
+
     const style = document.createElement("style");
 
     style.textContent = `
         .page {
             width: ${paper.width}mm;
             height: ${paper.height}mm;
+            --margin-top: ${settings.marginTop}mm;
+            --margin-bottom: ${settings.marginBottom}mm;
+            --margin-left: ${settings.marginLeft}mm;
+            --margin-right: ${settings.marginRight}mm;
+            --font-size: ${settings.fontSize}pt;
+            --char-spacing: ${charSpacing}mm;
+            --column-pitch: ${columnPitch}mm;
         }
     `;
 
@@ -318,33 +388,93 @@ function getGlobalCaretOffset() {
     return globalOffset;
 }
 
-function handleEditorInput(event) {
-    const editor = event.currentTarget;
+// function handleEditorInput(event) {
+//     const editor = event.currentTarget;
 
-    state.currentContent = getCurrentContentFromPages();
-    updateCharacterCount();
+//     state.currentContent = getCurrentContentFromPages();
+//     updateCharacterCount();
 
-    if (state.currentDocumentId !== null) {
-        setSaveStatus("未保存");
-    }
+//     // if (state.currentDocumentId !== null) {
+//     //     setSaveStatus("未保存");
+//     // }
+//     document.dispatchEvent(
+//         new CustomEvent("editor-content-changed")
+//     );
 
+//     const requiredPages = splitIntoPages(state.currentContent);
+
+//     const currentPages = [
+//         ...elements.editorPages.querySelectorAll(".page-editor"),
+//     ].map(getEditorText);
+
+//     // ページ数だけでなく、各ページの文章の配分も比較する
+//     pendingRender =
+//         requiredPages.length !== currentPages.length ||
+//         requiredPages.some(
+//             (pageText, index) => pageText !== currentPages[index]
+//         );
+
+//     document.dispatchEvent(
+//         new CustomEvent("editor-content-changed")
+//     );
+// }
+
+function updatePendingRender() {
     const requiredPages = splitIntoPages(state.currentContent);
 
     const currentPages = [
         ...elements.editorPages.querySelectorAll(".page-editor"),
     ].map(getEditorText);
 
-    // ページ数だけでなく、各ページの文章の配分も比較する
     pendingRender =
         requiredPages.length !== currentPages.length ||
         requiredPages.some(
             (pageText, index) => pageText !== currentPages[index]
         );
+}
+
+function schedulePageRender() {
+    if (isComposing || !pendingRender) return;
+
+    if (pageRenderFrame !== null) {
+        cancelAnimationFrame(pageRenderFrame);
+    }
+
+    pageRenderFrame = requestAnimationFrame(() => {
+        pageRenderFrame = null;
+
+        if (isComposing || !pendingRender) return;
+
+        const hasEditorFocus =
+            elements.editorPages.contains(document.activeElement);
+
+        const caretOffset = hasEditorFocus
+            ? getGlobalCaretOffset()
+            : null;
+
+        state.currentContent = getCurrentContentFromPages();
+        pendingRender = false;
+
+        renderPages(caretOffset);
+    });
+}
+
+
+function handleEditorInput(event) {
+    state.currentContent = getCurrentContentFromPages();
+    updateCharacterCount();
+
+    updatePendingRender();
 
     document.dispatchEvent(
         new CustomEvent("editor-content-changed")
     );
+
+    if (!isComposing) {
+        schedulePageRender();
+    }
 }
+
 
 function handleCompositionStart() {
     isComposing = true;
@@ -352,12 +482,17 @@ function handleCompositionStart() {
 
 function handleCompositionEnd(event) {
     isComposing = false;
+
     state.currentContent = getCurrentContentFromPages();
     updateCharacterCount();
+
+    updatePendingRender();
 
     document.dispatchEvent(
         new CustomEvent("editor-content-changed")
     );
+
+    schedulePageRender();
 }
 
 function handleEditorKeydown(event) {
@@ -554,6 +689,7 @@ export function renderPages(focusOffset = null) {
     });
 
     updateCharacterCount();
+    updatePageScale();
 
     if (focusOffset !== null || hadEditorFocus) {
         focusEditorAt(focusOffset ?? globalOffset);
@@ -566,15 +702,7 @@ function handleEditorPagesFocusOut(event) {
     // 別ページへの移動では再描画しない
     if (event.relatedTarget?.closest?.(".page-editor")) return;
 
-    requestAnimationFrame(() => {
-        if (elements.editorPages.contains(document.activeElement)) return;
-
-        if (pendingRender) {
-            pendingRender = false;
-            state.currentContent = getCurrentContentFromPages();
-            renderPages();
-        }
-    });
+    schedulePageRender();
 }
 
 export function selectTextRange(globalStart, globalEnd) {
@@ -688,22 +816,8 @@ function handleEditorDocumentPointerDown(event) {
         return;
     }
 
-    // 編集領域からフォーカスを外す
     activeEditor.blur();
-
-    // focusoutイベントだけに依存せず、再描画を予約する
-    requestAnimationFrame(() => {
-        if (isComposing || !pendingRender) return;
-
-        // 別ページにフォーカスが移っていたら待つ
-        if (elements.editorPages.contains(document.activeElement)) {
-            return;
-        }
-
-        state.currentContent = getCurrentContentFromPages();
-        pendingRender = false;
-        renderPages();
-    });
+    schedulePageRender();
 }
 
 export function replaceTextRange(globalStart, globalEnd, replacement) {
