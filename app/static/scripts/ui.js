@@ -6,6 +6,7 @@ import {
     saveDocument,
     createDocument,
     scheduleSave,
+    setSaveStatus,
     loadTrash,
     emptyTrash,
 } from "./documents.js";
@@ -182,6 +183,16 @@ export function initializeUI() {
     initializeButtons();
     initializeShortcuts();
     initializeVersionDisplay();
+
+    document.addEventListener(
+        "editor-content-changed",
+        scheduleSave
+    );
+
+    document.addEventListener(
+        "settings-changed",
+        scheduleSave
+    );
 }
 
 async function initializeVersionDisplay() {

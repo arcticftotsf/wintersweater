@@ -61,3 +61,8 @@
         text-indent: 0;
     }
 }
+@media print {
+    #pages {
+        zoom: 1 !important;
+    }
+}
