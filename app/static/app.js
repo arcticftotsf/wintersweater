@@ -7,16 +7,6 @@ import {
     initializeUI,
 } from "./scripts/ui.js";
 
-// エディタの内容が変更されたときに自動保存
-document.addEventListener("editor-content-changed", () => {
-    scheduleSave();
-});
-
-// 設定が変更されたときに自動保存
-document.addEventListener("settings-changed", () => {
-    scheduleSave();
-});
-
 // アプリケーション初期化
 async function initialize() {
     initializeUI();
