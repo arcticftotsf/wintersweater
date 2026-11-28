@@ -1,5 +1,5 @@
 
-import { elements } from "./state.js";
+import { elements, state } from "./state.js";
 import { selectAllText } from "./editor.js";
 
 import {
@@ -193,6 +193,37 @@ export function initializeUI() {
         "settings-changed",
         scheduleSave
     );
+
+    // 未保存のままブラウザを閉じる・再読み込みするときの警告
+    window.addEventListener("beforeunload", event => {
+        if (state.isDirty) {
+            event.preventDefault();
+            event.returnValue = "";
+        }
+    });
+}
+
+// Tauri版ではアプリ本体のバージョン（tauri.conf.json）を正とする。
+// 取得できない場合（ブラウザ開発時など）は version.json を使う。
+async function getAppVersion() {
+    const invoke = window.__TAURI_INTERNALS__?.invoke;
+
+    if (invoke) {
+        try {
+            return await invoke("plugin:app|version");
+        } catch (error) {
+            console.warn("Tauriからバージョンを取得できません:", error);
+        }
+    }
+
+    const response = await fetch("/version.json");
+
+    if (!response.ok) {
+        throw new Error("バージョン情報を取得できません");
+    }
+
+    const config = await response.json();
+    return config.version;
 }
 
 async function initializeVersionDisplay() {
@@ -201,15 +232,7 @@ async function initializeVersionDisplay() {
     if (!element) return;
 
     try {
-        const response = await fetch("/version.json");
-
-        if (!response.ok) {
-            throw new Error("バージョン情報を取得できません");
-        }
-
-        const config = await response.json();
-
-        element.textContent = `Version ${config.version}`;
+        element.textContent = `Version ${await getAppVersion()}`;
     } catch (error) {
         console.error(error);
         element.textContent = "Version 不明";

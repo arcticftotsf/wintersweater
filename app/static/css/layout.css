@@ -43,6 +43,7 @@
 .workspace {
     display: flex;
     height: calc(100vh - var(--toolbar-height));
+    height: calc(100dvh - var(--toolbar-height));
 }
 
 .sidebar {
@@ -121,6 +122,7 @@
 .editor-area {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     overflow: auto;
     padding: 24px 30px 60px;
 }

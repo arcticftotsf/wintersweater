@@ -14,30 +14,33 @@ export function setSaveStatus(message) {
 }
 
 
+// 未保存の変更があることを記録する（自動保存はしない）
 export function scheduleSave() {
+    state.isDirty = true;
     setSaveStatus("未保存");
-
-    clearTimeout(state.saveTimer);
-    state.saveTimer = null;
 }
 
-export async function saveDocument() {
-    if (state.currentDocumentId === null) return;
+let savePromise = null;
 
-    if (state.isSaving) {
-        state.saveAgain = true;
-        return;
-    }
+// 未保存の変更があれば保存する。保存不要または成功なら true
+export async function saveIfDirty() {
+    if (!state.isDirty) return true;
+    return saveDocument();
+}
 
-    clearTimeout(state.saveTimer);
+async function saveOnce() {
+    const id = state.currentDocumentId;
 
     state.isSaving = true;
     setSaveStatus("保存中...");
 
+    // 保存中に入力された変更を見落とさないよう、先にフラグを下ろす
+    state.isDirty = false;
+
     try {
         state.currentContent = getCurrentContentFromPages();
 
-        await request(`/api/documents/${state.currentDocumentId}`, {
+        await request(`/api/documents/${id}`, {
             method: "PUT",
             body: JSON.stringify({
                 title: elements.titleInput.value.trim() || "無題",
@@ -45,20 +48,49 @@ export async function saveDocument() {
                 settings: state.currentSettings,
             }),
         });
+    } catch (error) {
+        console.error(error);
+        state.isDirty = true;
+        setSaveStatus("保存失敗");
+        state.isSaving = false;
+        return false;
+    }
 
-        setSaveStatus("保存済み");
+    state.isSaving = false;
+    setSaveStatus(state.isDirty ? "未保存" : "保存済み");
+
+    try {
         await loadDocuments();
     } catch (error) {
         console.error(error);
-        setSaveStatus("保存失敗");
-    } finally {
-        state.isSaving = false;
-
-        if (state.saveAgain) {
-            state.saveAgain = false;
-            saveDocument();
-        }
     }
+
+    return true;
+}
+
+// 保存する。成功したら true。保存中に呼ばれたらその完了を待つ
+export async function saveDocument() {
+    if (state.currentDocumentId === null) return true;
+
+    if (savePromise) {
+        state.saveAgain = true;
+        return savePromise;
+    }
+
+    savePromise = (async () => {
+        let ok;
+
+        do {
+            state.saveAgain = false;
+            ok = await saveOnce();
+        } while (ok && state.saveAgain);
+
+        return ok;
+    })().finally(() => {
+        savePromise = null;
+    });
+
+    return savePromise;
 }
 
 export async function loadDocuments() {
@@ -106,7 +138,12 @@ export async function loadDocuments() {
 export async function openDocument(id) {
     if (id === state.currentDocumentId) return;
 
-    clearTimeout(state.saveTimer);
+    // 未保存の変更は、切り替える前に必ず保存する
+    if (!(await saveIfDirty())) {
+        throw new Error(
+            "未保存の変更を保存できなかったため、切り替えを中止しました"
+        );
+    }
 
     const doc = await request(`/api/documents/${id}`);
 
@@ -117,10 +154,14 @@ export async function openDocument(id) {
         ...(doc.settings || {}),
     };
 
+    state.isDirty = false;
+    state.currentSearchPosition = 0;
+
     elements.titleInput.disabled = false;
     elements.titleInput.value = doc.title;
 
     renderPages();
+    document.querySelector(".editor-area")?.scrollTo(0, 0);
     fillSettingsForm();
     setSaveStatus("保存済み");
 
@@ -128,9 +169,7 @@ export async function openDocument(id) {
 }
 
 export function clearEditor() {
-    clearTimeout(state.saveTimer);
-    state.saveTimer = null;
-
+    state.isDirty = false;
     state.currentDocumentId = null;
     state.currentContent = "";
     state.currentSettings = { ...DEFAULT_SETTINGS };
@@ -146,6 +185,11 @@ export function clearEditor() {
 
 export async function createDocument() {
     try {
+        if (!(await saveIfDirty())) {
+            setSaveStatus("保存に失敗したため、新規作成を中止しました");
+            return;
+        }
+
         setSaveStatus("新規原稿を作成中...");
 
         const doc = await request("/api/documents", {
@@ -165,11 +209,6 @@ export async function createDocument() {
 }
 
 export async function deleteDocument(id, title) {
-    if (id === state.currentDocumentId && state.isSaving) {
-        setSaveStatus("保存処理中です。完了後に削除してください。");
-        return;
-    }
-
     const confirmed = await window.confirm(
     `「${title}」をゴミ箱に移動しますか？`
     );
@@ -179,9 +218,10 @@ export async function deleteDocument(id, title) {
     const isCurrentDocument = id === state.currentDocumentId;
 
     try {
-        if (isCurrentDocument) {
-            clearTimeout(state.saveTimer);
-            state.saveTimer = null;
+        // 開いている原稿は、最新の内容を保存してからゴミ箱へ移す
+        if (isCurrentDocument && !(await saveIfDirty())) {
+            setSaveStatus("保存に失敗したため、削除を中止しました");
+            return;
         }
 
         await request(`/api/documents/${id}`, {
@@ -190,6 +230,7 @@ export async function deleteDocument(id, title) {
 
         if (isCurrentDocument) {
             state.currentDocumentId = null;
+            state.isDirty = false;
 
             const documents = await request("/api/documents");
 
