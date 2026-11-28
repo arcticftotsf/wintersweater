@@ -3,7 +3,11 @@ import {
     getCurrentContentFromPages,
     selectTextRange,
     replaceTextRange,
+    renderPages,
 } from "./editor.js";
+
+// 直前に見つけた一致の開始位置（「前へ」で同じ箇所に戻らないために使う）
+let lastMatchStart = 0;
 
 function getSearchInput() {
     return document.getElementById("search-input");
@@ -15,6 +19,16 @@ function getReplaceInput() {
 
 function setSearchStatus(message) {
     document.getElementById("search-status").textContent = message;
+}
+
+// String#indexOf などはUTF-16単位、エディタ側はコードポイント単位。
+// 𠮷や絵文字を含む原稿でずれないよう変換する。
+function toCodePointOffset(text, utf16Index) {
+    return [...text.slice(0, utf16Index)].length;
+}
+
+function codePointLength(text) {
+    return [...text].length;
 }
 
 export function findNext(reverse = false) {
@@ -29,10 +43,9 @@ export function findNext(reverse = false) {
     let index;
 
     if (reverse) {
-        index = content.lastIndexOf(
-            keyword,
-            Math.max(0, state.currentSearchPosition - 1)
-        );
+        index = lastMatchStart > 0
+            ? content.lastIndexOf(keyword, lastMatchStart - 1)
+            : -1;
 
         if (index < 0) {
             index = content.lastIndexOf(keyword);
@@ -50,12 +63,18 @@ export function findNext(reverse = false) {
         return;
     }
 
-    state.currentSearchPosition = reverse
-        ? index
-        : index + keyword.length;
+    lastMatchStart = index;
+    state.currentSearchPosition = index + keyword.length;
 
-    selectTextRange(index, index + keyword.length);
-    setSearchStatus("見つかりました");
+    const start = toCodePointOffset(content, index);
+    const selected = selectTextRange(
+        start,
+        start + codePointLength(keyword)
+    );
+
+    setSearchStatus(
+        selected ? "見つかりました" : "見つかりましたが選択できませんでした"
+    );
 }
 
 export function replaceOne() {
@@ -68,16 +87,28 @@ export function replaceOne() {
     }
 
     const content = getCurrentContentFromPages();
-    const index = content.indexOf(keyword, state.currentSearchPosition);
+    let index = content.indexOf(keyword, state.currentSearchPosition);
+
+    if (index < 0) {
+        index = content.indexOf(keyword);
+    }
 
     if (index < 0) {
         setSearchStatus("置換対象が見つかりませんでした");
         state.currentSearchPosition = 0;
+        lastMatchStart = 0;
         return;
     }
 
-    replaceTextRange(index, index + keyword.length, replacement);
+    const start = toCodePointOffset(content, index);
 
+    replaceTextRange(
+        start,
+        start + codePointLength(keyword),
+        replacement
+    );
+
+    lastMatchStart = index;
     state.currentSearchPosition = index + replacement.length;
     setSearchStatus("1件置換しました");
 }
@@ -101,6 +132,10 @@ export function replaceAll() {
 
     state.currentContent = content.split(keyword).join(replacement);
     state.currentSearchPosition = 0;
+    lastMatchStart = 0;
+
+    // 以前は再描画していなかったため、画面にも保存内容にも反映されなかった
+    renderPages();
 
     document.dispatchEvent(
         new CustomEvent("editor-content-changed")

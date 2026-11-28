@@ -103,6 +103,29 @@ function validateSettings(settings) {
         return "ページ番号の設定が不正です";
     }
 
+    // 本文領域に文字が収まるか確認する（収まらないと文字が重なる）
+    const paper = PAPER_SIZES[settings.paper];
+    const contentWidth =
+        paper.width - settings.marginLeft - settings.marginRight;
+    const contentHeight =
+        paper.height - settings.marginTop - settings.marginBottom;
+
+    if (contentWidth <= 0 || contentHeight <= 0) {
+        return "余白が大きすぎて本文の領域がありません";
+    }
+
+    const fontSizeMm = settings.fontSize * 25.4 / 72;
+    const maxChars = Math.floor(contentHeight / fontSizeMm);
+    const maxLines = Math.floor(contentWidth / fontSizeMm);
+
+    if (settings.charsPerLine > maxChars) {
+        return `1行の文字数が多すぎます（この用紙・余白・文字サイズでは最大${maxChars}文字）`;
+    }
+
+    if (settings.linesPerPage > maxLines) {
+        return `1ページの行数が多すぎます（この用紙・余白・文字サイズでは最大${maxLines}行）`;
+    }
+
     return null;
 }
 

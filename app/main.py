@@ -28,9 +28,14 @@ DEFAULT_SETTINGS = {
 
 app = FastAPI(title="Wintersweater")
 
+# 自分自身（Tauri・localhost・127.0.0.1）からのアクセスだけを許可する。
+# "*" だと、閲覧中の他のWebサイトのJavaScriptから原稿を読まれてしまう。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=(
+        r"^(https?|tauri)://"
+        r"(tauri\.localhost|localhost|127\.0\.0\.1)(:\d+)?$"
+    ),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

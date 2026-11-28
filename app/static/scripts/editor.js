@@ -35,18 +35,19 @@ function updatePageScale() {
     const pageWidth = paper.width * 96 / 25.4;
     const pageHeight = paper.height * 96 / 25.4;
 
-    const scale = Math.max(
-        0.8,
-        Math.min(
+    // エリアが非表示・極端に小さいときは計算しない
+    if (availableWidth > 0 && availableHeight > 0) {
+        const raw = Math.min(
             1,
             availableWidth / pageWidth,
             availableHeight / pageHeight
-        )
-    );
+        );
 
-    elements.editorPages.style.zoom = String(
-        Number.isFinite(scale) && scale > 0 ? scale : 1
-    );
+        // 端数で1px見切れないよう、少し小さめに切り捨てる
+        const scale = Math.max(0.1, Math.floor(raw * 1000) / 1000 - 0.002);
+
+        elements.editorPages.style.zoom = String(scale);
+    }
 
     if (!pageScaleObserver && window.ResizeObserver) {
         pageScaleObserver = new ResizeObserver(updatePageScale);
@@ -87,7 +88,9 @@ export function getPageStyle() {
 
     const fontSizeMm = settings.fontSize * 25.4 / 72;
 
-    const charSpacing = 0;
+    const charSpacing = chars > 1
+        ? (contentHeight - fontSizeMm * chars) / (chars - 1)
+        : 0;
 
     const columnPitch = contentWidth / lines;
 
@@ -104,6 +107,13 @@ export function getPageStyle() {
             --font-size: ${settings.fontSize}pt;
             --char-spacing: ${charSpacing}mm;
             --column-pitch: ${columnPitch}mm;
+        }
+
+        @media print {
+            @page {
+                size: ${paper.width}mm ${paper.height}mm;
+                margin: 0;
+            }
         }
     `;
 
@@ -237,7 +247,7 @@ export function focusEditorAt(globalOffset) {
         if (remaining <= length || i === editors.length - 1) {
             const target = Math.min(remaining, length);
 
-            editor.focus();
+            editor.focus({ preventScroll: true });
 
             const paragraphs = [...editor.children];
             let position = 0;
@@ -556,6 +566,46 @@ function handlePaste(event) {
     document.execCommand("insertText", false, text);
 }
 
+// キャレットが表示領域の外にあるときだけ、必要最小限スクロールする
+function revealCaret() {
+    const area = document.querySelector(".editor-area");
+    const selection = window.getSelection();
+
+    if (!area || !selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0).cloneRange();
+    let rect = range.getClientRects()[0] || range.getBoundingClientRect();
+
+    const isEmptyRect = !rect ||
+        (rect.width === 0 && rect.height === 0 &&
+         rect.top === 0 && rect.left === 0);
+
+    if (isEmptyRect) {
+        const node = range.startContainer;
+        const element = node.nodeType === Node.ELEMENT_NODE
+            ? node
+            : node.parentElement;
+        rect = element?.getBoundingClientRect();
+    }
+
+    if (!rect) return;
+
+    const bounds = area.getBoundingClientRect();
+    const margin = 24;
+
+    if (rect.top < bounds.top + margin) {
+        area.scrollTop -= bounds.top + margin - rect.top;
+    } else if (rect.bottom > bounds.bottom - margin) {
+        area.scrollTop += rect.bottom - (bounds.bottom - margin);
+    }
+
+    if (rect.left < bounds.left + margin) {
+        area.scrollLeft -= bounds.left + margin - rect.left;
+    } else if (rect.right > bounds.right - margin) {
+        area.scrollLeft += rect.right - (bounds.right - margin);
+    }
+}
+
 export function renderPages(focusOffset = null) {
 
     elements.editorPages.removeEventListener(
@@ -580,6 +630,11 @@ export function renderPages(focusOffset = null) {
 
     const hadEditorFocus =
         document.activeElement?.classList?.contains("page-editor");
+
+    // 再描画でDOMが空になるとスクロール位置が0に戻るので退避する
+    const scrollArea = document.querySelector(".editor-area");
+    const savedScrollTop = scrollArea ? scrollArea.scrollTop : 0;
+    const savedScrollLeft = scrollArea ? scrollArea.scrollLeft : 0;
 
     const pages = splitIntoPages(state.currentContent);
     const allCharacters = [...state.currentContent];
@@ -689,8 +744,15 @@ export function renderPages(focusOffset = null) {
     updateCharacterCount();
     updatePageScale();
 
+    // スクロール位置を復元
+    if (scrollArea) {
+        scrollArea.scrollTop = savedScrollTop;
+        scrollArea.scrollLeft = savedScrollLeft;
+    }
+
     if (focusOffset !== null || hadEditorFocus) {
         focusEditorAt(focusOffset ?? globalOffset);
+        revealCaret();
     }
 }
 
@@ -765,35 +827,44 @@ export function selectTextRange(globalStart, globalEnd) {
         return null;
     }
 
+    let startPoint = null;
+    let endPoint = null;
+    let startEditor = null;
+
     for (const editor of editors) {
         const length = [...getEditorText(editor)].length;
 
+        if (!startPoint && globalStart < pageOffset + length) {
+            startPoint = locate(editor, globalStart - pageOffset);
+            startEditor = editor;
+        }
+
         if (
-            globalStart >= pageOffset &&
+            !endPoint &&
+            globalEnd > pageOffset &&
             globalEnd <= pageOffset + length
         ) {
-            const start = locate(editor, globalStart - pageOffset);
-            const end = locate(editor, globalEnd - pageOffset);
-
-            if (!start || !end) return false;
-
-            const range = document.createRange();
-            range.setStart(start.node, start.offset);
-            range.setEnd(end.node, end.offset);
-
-            editor.focus();
-
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-
-            return true;
+            endPoint = locate(editor, globalEnd - pageOffset);
         }
 
         pageOffset += length;
     }
 
-    return false;
+    if (!startPoint || !endPoint) return false;
+
+    const range = document.createRange();
+    range.setStart(startPoint.node, startPoint.offset);
+    range.setEnd(endPoint.node, endPoint.offset);
+
+    startEditor.focus({ preventScroll: true });
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    revealCaret();
+
+    return true;
 }
 
 function handleEditorDocumentPointerDown(event) {
@@ -819,12 +890,13 @@ function handleEditorDocumentPointerDown(event) {
 }
 
 export function replaceTextRange(globalStart, globalEnd, replacement) {
-    const content = getCurrentContentFromPages();
+    // globalStart / globalEnd はコードポイント単位
+    const characters = [...getCurrentContentFromPages()];
 
     state.currentContent =
-        content.slice(0, globalStart) +
+        characters.slice(0, globalStart).join("") +
         replacement +
-        content.slice(globalEnd);
+        characters.slice(globalEnd).join("");
 
     renderPages(globalStart + [...replacement].length);
 
