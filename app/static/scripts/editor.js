@@ -87,9 +87,7 @@ export function getPageStyle() {
 
     const fontSizeMm = settings.fontSize * 25.4 / 72;
 
-    const charSpacing = chars > 1
-        ? (contentHeight - fontSizeMm) / (chars - 1) - fontSizeMm
-        : 0;
+    const charSpacing = 0;
 
     const columnPitch = contentWidth / lines;
 
